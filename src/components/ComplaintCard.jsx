@@ -1,11 +1,17 @@
 import React from 'react';
 import { Card, Badge, StarRating } from './ui/index.js';
 import { cn } from '../utils/cn.js';
+import { RenderCounter } from './RenderCounter.jsx';
 
 /**
- * Responsive ComplaintCard with accessible focus indicators, semantic HTML, and mobile-friendly touch targets
+ * ComplaintCard optimized with React.memo
+ * Demonstrates:
+ * - React.memo skips re-rendering when props (complaint, vendorName, isSelected, onSelect)
+ *   have not changed referentially!
+ * - When used in a 500+ item list, selecting 1 card only re-renders 2 cards (the previously selected
+ *   and newly selected one) instead of all 500!
  */
-export function ComplaintCard({
+export const ComplaintCard = React.memo(function ComplaintCard({
   complaint,
   vendorName = 'Unknown Vendor',
   isSelected = false,
@@ -25,14 +31,18 @@ export function ComplaintCard({
         'transition-all duration-150 relative select-none',
         isSelected
           ? 'ring-2 ring-railway-600 border-transparent shadow-md bg-blue-50/20'
-          : 'hover:border-slate-300 hover:shadow-sm'
+          : 'hover:border-slate-300 hover:shadow-xs'
       )}
     >
       <Card.Header className="pb-2.5">
         <div className="flex flex-col min-w-0 pr-2">
-          <span className="font-mono text-xs font-bold text-slate-800 tracking-tight truncate">
-            {referenceNo}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-xs font-bold text-slate-800 tracking-tight truncate">
+              {referenceNo}
+            </span>
+            {/* Dev Render Counter to visually prove memoization */}
+            {isSelected && <RenderCounter componentName="Card" />}
+          </div>
           <span className="text-xs text-slate-500 truncate mt-0.5" title={vendorName}>
             {vendorName}
           </span>
@@ -70,6 +80,6 @@ export function ComplaintCard({
       </Card.Footer>
     </Card>
   );
-}
+});
 
 export default ComplaintCard;
