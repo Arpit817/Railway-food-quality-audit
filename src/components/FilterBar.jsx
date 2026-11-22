@@ -1,15 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { COMPLAINT_CATEGORIES, COMPLAINT_STATUSES } from '../utils/complaintUtils.js';
 import { cn } from '../utils/cn.js';
 
 /**
- * FilterBar Component
- * Fully controlled component demonstrating:
- * - Controlled input binding (value & onChange)
- * - Derived state counts passed from parent
- * - Category filter chips
- * - Status filter dropdown
- * - Search text input
+ * FilterBar Component with Debounced Search
+ * Demonstrates:
+ * - useEffect with setTimeout for debouncing search input (350ms delay)
+ * - Essential cleanup function: clearTimeout to cancel pending search on keystroke
+ * - Eliminates lag when typing rapidly
  */
 export function FilterBar({
   filters,
@@ -19,6 +17,29 @@ export function FilterBar({
   filteredCount,
   severityCounts = {}
 }) {
+  // Local immediate state for typing responsiveness
+  const [searchInput, setSearchInput] = useState(filters.search || '');
+
+  // SYNC FROM PARENT: Keep local searchInput aligned if filters reset externally
+  useEffect(() => {
+    setSearchInput(filters.search || '');
+  }, [filters.search]);
+
+  // EFFECT: Debounce search input changes by 350ms
+  useEffect(() => {
+    // Set a timer to propagate search text to parent filters after 350ms idle
+    const handler = setTimeout(() => {
+      if (searchInput !== filters.search) {
+        onFilterChange('search', searchInput);
+      }
+    }, 350);
+
+    // CLEANUP: If user types another character before 350ms passes, cancel previous timer!
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchInput, filters.search, onFilterChange]);
+
   const categoryLabels = {
     hygiene_issue: 'Hygiene',
     foreign_object: 'Foreign Object',
@@ -30,16 +51,11 @@ export function FilterBar({
     other: 'Other'
   };
 
-  const handleTextChange = (e) => {
-    onFilterChange('search', e.target.value);
-  };
-
   const handleStatusChange = (e) => {
     onFilterChange('status', e.target.value);
   };
 
   const handleCategoryToggle = (category) => {
-    // If already active, toggle off, else set
     const nextCategory = filters.category === category ? '' : category;
     onFilterChange('category', nextCategory);
   };
@@ -54,25 +70,28 @@ export function FilterBar({
 
   return (
     <div className="bg-white rounded-xl border border-slate-200/90 p-4 space-y-3.5 shadow-2xs">
-      {/* Top Row: Search Input + Status Dropdown + Reset */}
+      {/* Top Row: Debounced Search Input + Status Dropdown + Reset */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        {/* Controlled Search Box */}
+        {/* Controlled Search Box with Debouncing */}
         <div className="relative flex-1">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
             🔍
           </span>
           <input
             type="text"
-            value={filters.search || ''}
-            onChange={handleTextChange}
-            placeholder="Search by PNR, token, reference or remarks..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by PNR, token, reference or remarks (debounced 350ms)..."
             aria-label="Search complaints"
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-railway-500 focus:border-transparent transition-all placeholder:text-slate-400"
+            className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-railway-500 focus:border-transparent transition-all placeholder:text-slate-400"
           />
-          {filters.search && (
+          {searchInput && (
             <button
               type="button"
-              onClick={() => onFilterChange('search', '')}
+              onClick={() => {
+                setSearchInput('');
+                onFilterChange('search', '');
+              }}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-400 hover:text-slate-600"
               aria-label="Clear search"
             >
@@ -106,7 +125,7 @@ export function FilterBar({
           <button
             type="button"
             onClick={onResetFilters}
-            className="text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1.5 rounded hover:bg-red-50 transition-colors whitespace-nowrap self-end sm:self-auto"
+            className="text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1.5 rounded hover:bg-red-50 transition-colors whitespace-nowrap self-end sm:self-auto cursor-pointer"
           >
             Reset Filters
           </button>
@@ -152,7 +171,6 @@ export function FilterBar({
           })}
         </div>
 
-        {/* Filter Stats badge */}
         <div className="text-xs text-slate-500 font-medium">
           Showing <strong className="text-slate-800">{filteredCount}</strong> of {totalCount} complaints
         </div>

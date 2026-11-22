@@ -5,3 +5,4 @@ export { StarRating } from './StarRating.jsx';
 export { EmptyState } from './EmptyState.jsx';
 export { ErrorMessage } from './ErrorMessage.jsx';
 export { Layout } from './Layout.jsx';
+export { Toast } from './Toast.jsx';
