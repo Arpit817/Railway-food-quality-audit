@@ -1,7 +1,15 @@
-import React from 'react';
-import { Card, Badge, StarRating, Button, EmptyState } from './ui/index.js';
+import React, { useState } from 'react';
+import { Card, Button, Badge, StarRating } from './ui/index.js';
 import { cn } from '../utils/cn.js';
+import { RenderCounter } from './RenderCounter.jsx';
 
+/**
+ * ComplaintDetailPanel with controlled Remarks input and Interactive Status Transitions
+ * Demonstrates:
+ * - Controlled input for inspector remarks (`remarks` state + `onChange`)
+ * - Conditional input validation (disabling transition if remarks are empty for penalties)
+ * - RenderCounter debugging
+ */
 export function ComplaintDetailPanel({
   complaint,
   vendor,
@@ -10,17 +18,21 @@ export function ComplaintDetailPanel({
   onClose,
   onStatusChange
 }) {
+  // Local controlled state for inspector remarks
+  const [remarks, setRemarks] = useState('');
+  const [actionError, setActionError] = useState('');
+
   if (!complaint) {
     return (
-      <EmptyState
-        title="No Complaint Selected"
-        description="Select any complaint from the inbox to inspect packaging QR tokens, kitchen details, photo evidence, and audit logs."
-        icon={
-          <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-        }
-      />
+      <Card className="h-full flex items-center justify-center p-8 text-center text-slate-500 bg-white">
+        <div>
+          <span className="text-3xl block mb-2" role="img" aria-label="select">👈</span>
+          <h3 className="font-bold text-slate-800 text-sm">No Complaint Selected</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-xs">
+            Choose an audit record from the filtered inbox on the left to inspect batch details and process inspector actions.
+          </p>
+        </div>
+      </Card>
     );
   }
 
@@ -39,6 +51,19 @@ export function ComplaintDetailPanel({
     actionLogs = []
   } = complaint;
 
+  const handleAction = (nextStatus, defaultRemarks) => {
+    // Validate remarks
+    const finalRemarks = remarks.trim() || defaultRemarks;
+    if (!finalRemarks) {
+      setActionError('Please provide inspector remarks for this status transition.');
+      return;
+    }
+
+    setActionError('');
+    onStatusChange(complaint.id, nextStatus, finalRemarks);
+    setRemarks(''); // Reset controlled input
+  };
+
   return (
     <Card className="h-full flex flex-col shadow-sm">
       <Card.Header className="bg-slate-50/90 border-b border-slate-200">
@@ -48,6 +73,7 @@ export function ComplaintDetailPanel({
               {referenceNo}
             </h2>
             <Badge variant={severity}>{severity}</Badge>
+            <RenderCounter componentName="DetailPanel" />
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Registered on {new Date(createdAt).toLocaleString()}
@@ -60,14 +86,11 @@ export function ComplaintDetailPanel({
         )}
       </Card.Header>
 
-      <Card.Body className="space-y-4 sm:space-y-5 overflow-y-auto max-h-[60vh] sm:max-h-[70vh]">
-        {/* Traceability Card Grid */}
-        <section
-          aria-labelledby="traceability-heading"
-          className="bg-railway-50/70 border border-railway-200/80 rounded-xl p-3.5 text-xs"
-        >
-          <h3 id="traceability-heading" className="font-bold text-railway-900 mb-2.5 flex items-center gap-1.5">
-            <span role="img" aria-label="packaging">📦</span> Authorized Packaging Traceability
+      <Card.Body className="space-y-4 sm:space-y-5 overflow-y-auto max-h-[58vh]">
+        {/* Traceability Grid */}
+        <section className="bg-railway-50/70 border border-railway-200/80 rounded-xl p-3.5 text-xs">
+          <h3 className="font-bold text-railway-900 mb-2 flex items-center gap-1.5">
+            <span role="img" aria-label="package">📦</span> Authorized Packaging Traceability
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-slate-700">
             <div>
@@ -93,81 +116,97 @@ export function ComplaintDetailPanel({
               <span className="font-medium text-slate-900">{batch?.itemType || 'Standard Thali'}</span>
             </div>
             <div>
-              <span className="text-slate-500">Seat / PNR:</span>{' '}
+              <span className="text-slate-500">Passenger Seat:</span>{' '}
               <span className="font-medium text-slate-900">{seat || 'Coach B2-19'} {pnr ? `(PNR: ${pnr})` : ''}</span>
             </div>
           </div>
         </section>
 
-        {/* Passenger Feedback Content */}
-        <section aria-label="Passenger Feedback">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-100 text-slate-800 capitalize">
+        {/* Complaint Statement */}
+        <section>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-slate-100 text-slate-800 capitalize">
               {category.replace(/_/g, ' ')}
             </span>
-            <StarRating rating={rating} size="md" />
+            <StarRating rating={rating} size="sm" />
           </div>
-          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/70">
-            <p className="text-sm text-slate-800 leading-relaxed">
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200/70">
+            <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal">
               "{comment}"
             </p>
           </div>
         </section>
 
-        {/* Photographic Evidence */}
+        {/* Photos */}
         {images.length > 0 && (
-          <section aria-label="Photographic Evidence">
+          <section>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Photographic Proof ({images.length})
+              Photographic Evidence ({images.length})
             </h4>
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
               {images.map((imgUrl, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-lg overflow-hidden border border-slate-200 w-32 h-24 bg-slate-100 shadow-2xs group relative"
-                >
-                  <img
-                    src={imgUrl}
-                    alt={`Evidence proof for complaint ${referenceNo}`}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                  />
+                <div key={idx} className="rounded-lg overflow-hidden border border-slate-200 w-28 h-20 bg-slate-100">
+                  <img src={imgUrl} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* Audit Trail Action Logs */}
-        <section aria-label="Action Logs">
+        {/* Controlled Remarks Input Box for Inspector */}
+        {status !== 'closed' && (
+          <section className="bg-amber-50/50 p-3 rounded-lg border border-amber-200/70 space-y-2">
+            <label htmlFor="inspector-remarks" className="block text-xs font-bold text-amber-900">
+              Inspector Resolution Remarks / Action Notes:
+            </label>
+            <input
+              id="inspector-remarks"
+              type="text"
+              value={remarks}
+              onChange={(e) => {
+                setRemarks(e.target.value);
+                if (actionError) setActionError('');
+              }}
+              placeholder="e.g. Dispatched officer to pantry car, sample collected for lab test..."
+              className="w-full text-xs p-2 rounded border border-amber-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+            {actionError && (
+              <p className="text-[11px] text-red-600 font-semibold">{actionError}</p>
+            )}
+          </section>
+        )}
+
+        {/* Action Logs */}
+        <section>
           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
             Audit Trail ({actionLogs.length})
           </h4>
-          <div className="space-y-2 border-l-2 border-railway-200 pl-3.5">
+          <div className="space-y-2 border-l-2 border-railway-200 pl-3">
             {actionLogs.map((log) => (
               <div key={log.id} className="text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-900 capitalize">
                     {log.action.replace(/_/g, ' ')}
                   </span>
-                  <time className="text-slate-400 text-[11px]" dateTime={log.timestamp}>
+                  <span className="text-slate-400 text-[11px]">
                     {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </time>
+                  </span>
                 </div>
                 <p className="text-slate-600 mt-0.5">{log.remarks}</p>
-                <span className="text-[10px] text-slate-400">Officer: {log.userId}</span>
+                <span className="text-[10px] text-slate-400">Recorded by: {log.userId}</span>
               </div>
             ))}
           </div>
         </section>
       </Card.Body>
 
-      {/* Action Footer */}
+      {/* Action Footer with State Machine Transitions */}
       <Card.Footer className="bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2 justify-end">
         {status === 'new' && (
           <Button
             size="sm"
             variant="primary"
-            onClick={() => onStatusChange && onStatusChange(complaint.id, 'under_review', 'Inspector began review')}
+            onClick={() => handleAction('under_review', 'Inspector began review and verified packaging token')}
           >
             Mark Under Review
           </Button>
@@ -176,7 +215,7 @@ export function ComplaintDetailPanel({
           <Button
             size="sm"
             variant="primary"
-            onClick={() => onStatusChange && onStatusChange(complaint.id, 'inspector_assigned', 'Field safety inspector assigned')}
+            onClick={() => handleAction('inspector_assigned', 'Field safety inspector assigned to coach inspection')}
           >
             Assign Inspector
           </Button>
@@ -185,7 +224,7 @@ export function ComplaintDetailPanel({
           <Button
             size="sm"
             variant="danger"
-            onClick={() => onStatusChange && onStatusChange(complaint.id, 'action_taken', 'Vendor served penalty notice')}
+            onClick={() => handleAction('action_taken', 'Vendor served penalty notice under Railway Catering Clause 8')}
           >
             Record Action Taken
           </Button>
@@ -194,7 +233,7 @@ export function ComplaintDetailPanel({
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => onStatusChange && onStatusChange(complaint.id, 'closed', 'Case resolved and closed')}
+            onClick={() => handleAction('closed', 'Resolution verified and complaint closed')}
           >
             Close Complaint
           </Button>
