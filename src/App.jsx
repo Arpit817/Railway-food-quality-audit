@@ -1,40 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { COMPLAINTS, VENDORS, KITCHENS, BATCHES } from './utils/mockData.js';
+import { generateBulkComplaints } from './utils/dataGenerator.js';
 import { updateComplaintStatus } from './utils/complaintUtils.js';
 import { Layout, Toast } from './components/ui/index.js';
 import { ComplaintCard } from './components/ComplaintCard.jsx';
 import { ComplaintDetailPanel } from './components/ComplaintDetailPanel.jsx';
 import { PassengerMobileView } from './components/PassengerMobileView.jsx';
 import { FilterBar } from './components/FilterBar.jsx';
+import { AuditClock } from './components/AuditClock.jsx';
 import { RenderCounter } from './components/RenderCounter.jsx';
 
 const LOCAL_STORAGE_FILTER_KEY = 'railfood_dashboard_filters';
 
 /**
- * Stage 6: App Component
+ * Stage 7: Performance Optimized App Component
  * Demonstrates:
- * - useEffect 1: Document title synchronization based on unresolved high-severity complaints
- * - useEffect 2: Real-time "Last Updated" clock with setInterval and clearInterval cleanup
- * - useEffect 3: Filter persistence with localStorage (load on mount, save on change)
- * - useEffect 4: Simulated incoming live complaint every 20s with interval cleanup and high-severity toast alert
- * - Pitfalls: Showing correct vs wrong dependency arrays and why cleanup is mandatory
+ * - 500+ records bulk generator simulating production railway grievance loads
+ * - React.memo on ComplaintCard and ComplaintDetailPanel to eliminate redundant renders
+ * - useCallback on handleSelectComplaint, handleStatusChange, and handleFilterChange to maintain referential identity
+ * - useMemo on expensive filter passes, severity metric reductions, and relational entity maps
+ * - State localization: moving the ticking clock down to <AuditClock /> so App does NOT re-render every second!
+ * - Note on when NOT to optimize (premature optimization trade-offs)
  */
 function App() {
-  const [complaintList, setComplaintList] = useState(COMPLAINTS);
+  // Main dataset: switchable between standard mock (20) and high-load stress test (500+)
+  const [useBulkData, setUseBulkData] = useState(false);
+
+  // Memoize bulk generation so it only runs when toggled
+  const initialComplaints = useMemo(() => {
+    return useBulkData ? generateBulkComplaints(500) : COMPLAINTS;
+  }, [useBulkData]);
+
+  const [complaintList, setComplaintList] = useState(initialComplaints);
+
+  // Sync when toggling between 20 and 500 items
+  useEffect(() => {
+    setComplaintList(initialComplaints);
+    setSelectedComplaintId(initialComplaints[0]?.id || null);
+  }, [initialComplaints]);
+
   const [selectedComplaintId, setSelectedComplaintId] = useState(COMPLAINTS[0]?.id || null);
   const [activeView, setActiveView] = useState('dashboard');
   const [activeToast, setActiveToast] = useState(null);
 
-  // Clock state for dashboard live audit feed
-  const [lastUpdatedTime, setLastUpdatedTime] = useState(new Date());
-
-  // Filter state initialized from localStorage if available
+  // Filters state with localStorage hydration
   const [filters, setFilters] = useState(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_FILTER_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
+      if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Failed to read filters from localStorage', e);
     }
@@ -46,198 +59,115 @@ function App() {
     };
   });
 
-  // Fast relational lookup maps
-  const vendorMap = VENDORS.reduce((acc, v) => ({ ...acc, [v.id]: v }), {});
-  const kitchenMap = KITCHENS.reduce((acc, k) => ({ ...acc, [k.id]: k }), {});
-  const batchMap = BATCHES.reduce((acc, b) => ({ ...acc, [b.id]: b }), {});
+  // OPTIMIZATION 1: useMemo for Relational Lookup Maps
+  // Prevents re-reducing vendors, kitchens, and batches on every render
+  const vendorMap = useMemo(() => {
+    return VENDORS.reduce((acc, v) => ({ ...acc, [v.id]: v }), {});
+  }, []);
 
-  // Unresolved high severity count (status not closed or action_taken)
-  const unresolvedHighSeverityCount = complaintList.filter(
-    (c) => c.severity === 'high' && c.status !== 'closed' && c.status !== 'action_taken'
-  ).length;
+  const kitchenMap = useMemo(() => {
+    return KITCHENS.reduce((acc, k) => ({ ...acc, [k.id]: k }), {});
+  }, []);
 
-  // EFFECT 1: Synchronize document.title with unresolved high severity count
-  // Correct Dependency Array: [unresolvedHighSeverityCount]
-  // Pitfall avoided: If empty [], title would never update as complaints are resolved!
+  const batchMap = useMemo(() => {
+    return BATCHES.reduce((acc, b) => ({ ...acc, [b.id]: b }), {});
+  }, []);
+
+  // OPTIMIZATION 2: useMemo for Derived Severity Metrics
+  // Only recalculates when complaintList changes
+  const severityCounts = useMemo(() => {
+    return {
+      high: complaintList.filter((c) => c.severity === 'high').length,
+      medium: complaintList.filter((c) => c.severity === 'medium').length,
+      low: complaintList.filter((c) => c.severity === 'low').length
+    };
+  }, [complaintList]);
+
+  // Unresolved high severity count for title sync
+  const unresolvedHighSeverityCount = useMemo(() => {
+    return complaintList.filter(
+      (c) => c.severity === 'high' && c.status !== 'closed' && c.status !== 'action_taken'
+    ).length;
+  }, [complaintList]);
+
+  // Document title sync
   useEffect(() => {
     if (unresolvedHighSeverityCount > 0) {
       document.title = `(${unresolvedHighSeverityCount} URGENT) Railway Food Quality Audit`;
     } else {
       document.title = 'Railway Food Quality Audit Platform';
     }
-
-    // Cleanup: Reset title if component unmounts
-    return () => {
-      document.title = 'Railway Food Quality Audit Platform';
-    };
   }, [unresolvedHighSeverityCount]);
 
-  // EFFECT 2: Live Clock ticker updating every second with clearInterval cleanup
-  // Demonstrates: mandatory cleanup function to avoid runaway memory leaks
-  useEffect(() => {
-    const timerId = setInterval(() => {
-      setLastUpdatedTime(new Date());
-    }, 1000);
-
-    // CLEANUP: Prevents orphan interval continuing in the background
-    return () => {
-      clearInterval(timerId);
-    };
-  }, []);
-
-  // EFFECT 3: Persist filter changes to localStorage
-  // Demonstrates: side effect execution whenever 'filters' dependency changes
+  // Persist filters to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_FILTER_KEY, JSON.stringify(filters));
-    } catch (e) {
-      console.warn('Unable to persist filters to localStorage', e);
-    }
+    } catch (e) {}
   }, [filters]);
 
-  // EFFECT 4: Simulated incoming live passenger complaint every 20 seconds
-  // Demonstrates: setInterval with state update, toast trigger, and cleanup
-  useEffect(() => {
-    const sampleIncoming = [
-      {
-        category: 'hygiene_issue',
-        comment: 'Found oil leaking through carton seal onto coach berth table.',
-        rating: 2,
-        severity: 'high',
-        vendorId: 'ven-001',
-        kitchenId: 'kit-101',
-        batchId: 'bat-901'
-      },
-      {
-        category: 'foreign_object',
-        comment: 'Small metal twist-tie piece found inside dal packet.',
-        rating: 1,
-        severity: 'high',
-        vendorId: 'ven-002',
-        kitchenId: 'kit-103',
-        batchId: 'bat-904'
-      },
-      {
-        category: 'stale_spoiled_food',
-        comment: 'Paneer subzi smells pungent and spoiled.',
-        rating: 1,
-        severity: 'high',
-        vendorId: 'ven-001',
-        kitchenId: 'kit-102',
-        batchId: 'bat-903'
+  // OPTIMIZATION 3: useMemo for Heavy Filter Pass (especially crucial with 500+ items!)
+  const filteredComplaints = useMemo(() => {
+    return complaintList.filter((item) => {
+      if (filters.search) {
+        const q = filters.search.toLowerCase().trim();
+        const matchesRef = item.referenceNo.toLowerCase().includes(q);
+        const matchesToken = item.token.toLowerCase().includes(q);
+        const matchesComment = item.comment.toLowerCase().includes(q);
+        const matchesPnr = item.pnr ? item.pnr.toLowerCase().includes(q) : false;
+        if (!matchesRef && !matchesToken && !matchesComment && !matchesPnr) {
+          return false;
+        }
       }
-    ];
 
-    let counter = 0;
-    const intervalId = setInterval(() => {
-      const template = sampleIncoming[counter % sampleIncoming.length];
-      counter += 1;
-
-      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-      const newRef = `RAIL-2026-${randomSuffix}`;
-
-      const newComplaint = {
-        id: `cmp-live-${Date.now()}`,
-        referenceNo: newRef,
-        token: `LIVE${randomSuffix}`,
-        batchId: template.batchId,
-        vendorId: template.vendorId,
-        kitchenId: template.kitchenId,
-        rating: template.rating,
-        category: template.category,
-        comment: template.comment,
-        severity: template.severity,
-        status: 'new',
-        createdAt: new Date().toISOString(),
-        images: [],
-        actionLogs: [
-          {
-            id: `log-${Date.now()}`,
-            action: 'CREATED',
-            remarks: 'Simulated real-time passenger grievance received via QR portal',
-            timestamp: new Date().toISOString(),
-            userId: 'live-system-simulation'
-          }
-        ]
-      };
-
-      // Functional state update
-      setComplaintList((prev) => [newComplaint, ...prev]);
-
-      // Trigger High Severity Alert Toast
-      setActiveToast({
-        id: newComplaint.id,
-        type: 'alert',
-        title: 'New High Severity Complaint Registered!',
-        message: `"${template.comment.substring(0, 75)}..."`,
-        meta: `Ref: ${newRef} • Train: 12424 • Category: ${template.category.replace(/_/g, ' ').toUpperCase()}`
-      });
-    }, 20000); // every 20 seconds
-
-    // CLEANUP: clear interval when dashboard unmounts
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []); // Run on mount
-
-  // Derived severity counts
-  const severityCounts = {
-    high: complaintList.filter((c) => c.severity === 'high').length,
-    medium: complaintList.filter((c) => c.severity === 'medium').length,
-    low: complaintList.filter((c) => c.severity === 'low').length
-  };
-
-  // Filtered complaint list
-  const filteredComplaints = complaintList.filter((item) => {
-    if (filters.search) {
-      const q = filters.search.toLowerCase().trim();
-      const matchesRef = item.referenceNo.toLowerCase().includes(q);
-      const matchesToken = item.token.toLowerCase().includes(q);
-      const matchesComment = item.comment.toLowerCase().includes(q);
-      const matchesPnr = item.pnr ? item.pnr.toLowerCase().includes(q) : false;
-      if (!matchesRef && !matchesToken && !matchesComment && !matchesPnr) {
+      if (filters.status && item.status !== filters.status) {
         return false;
       }
-    }
 
-    if (filters.status && item.status !== filters.status) {
-      return false;
-    }
+      if (filters.category && item.category !== filters.category) {
+        return false;
+      }
 
-    if (filters.category && item.category !== filters.category) {
-      return false;
-    }
+      if (filters.severity !== 'ALL' && item.severity !== filters.severity.toLowerCase()) {
+        return false;
+      }
 
-    if (filters.severity !== 'ALL' && item.severity !== filters.severity.toLowerCase()) {
-      return false;
-    }
+      return true;
+    });
+  }, [complaintList, filters]);
 
-    return true;
-  });
+  // Selected complaint memoized lookup
+  const selectedComplaint = useMemo(() => {
+    return complaintList.find((c) => c.id === selectedComplaintId) || null;
+  }, [complaintList, selectedComplaintId]);
 
-  const selectedComplaint = complaintList.find((c) => c.id === selectedComplaintId) || null;
+  // OPTIMIZATION 4: useCallback to stabilize event handler references
+  // Prevents child components wrapped in React.memo (ComplaintCard, DetailPanel, FilterBar)
+  // from re-rendering just because parent re-rendered!
+  const handleSelectComplaint = useCallback((c) => {
+    setSelectedComplaintId(c.id);
+  }, []);
 
-  const handleFilterChange = (field, value) => {
+  const handleFilterChange = useCallback((field, value) => {
     setFilters((prev) => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
-  const handleResetFilters = () => {
-    const defaultFilters = {
+  const handleResetFilters = useCallback(() => {
+    setFilters({
       search: '',
       status: '',
       category: '',
       severity: 'ALL'
-    };
-    setFilters(defaultFilters);
+    });
     try {
       localStorage.removeItem(LOCAL_STORAGE_FILTER_KEY);
     } catch (e) {}
-  };
+  }, []);
 
-  const handleStatusChange = (complaintId, newStatus, remarks) => {
+  const handleStatusChange = useCallback((complaintId, newStatus, remarks) => {
     setComplaintList((prevList) =>
       prevList.map((complaint) => {
         if (complaint.id === complaintId) {
@@ -246,12 +176,57 @@ function App() {
         return complaint;
       })
     );
-  };
+  }, []);
 
-  const handleAddNewFeedback = (newFeedback) => {
+  const handleAddNewFeedback = useCallback((newFeedback) => {
     setComplaintList((prev) => [newFeedback, ...prev]);
     setSelectedComplaintId(newFeedback.id);
-  };
+  }, []);
+
+  // Simulated live complaints every 20s
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const newRef = `RAIL-2026-${randomSuffix}`;
+
+      const newComplaint = {
+        id: `cmp-live-${Date.now()}`,
+        referenceNo: newRef,
+        token: `LIVE${randomSuffix}`,
+        batchId: 'bat-901',
+        vendorId: 'ven-001',
+        kitchenId: 'kit-101',
+        rating: 1,
+        category: 'foreign_object',
+        comment: 'Foreign metal shard reported in rice packet.',
+        severity: 'high',
+        status: 'new',
+        createdAt: new Date().toISOString(),
+        images: [],
+        actionLogs: [
+          {
+            id: `log-${Date.now()}`,
+            action: 'CREATED',
+            remarks: 'Simulated grievance via authorized packaging QR',
+            timestamp: new Date().toISOString(),
+            userId: 'live-system'
+          }
+        ]
+      };
+
+      setComplaintList((prev) => [newComplaint, ...prev]);
+
+      setActiveToast({
+        id: newComplaint.id,
+        type: 'alert',
+        title: 'New High Severity Complaint Registered!',
+        message: '"Foreign metal shard reported in rice packet."',
+        meta: `Ref: ${newRef} • Train: 12424 • Category: FOREIGN OBJECT`
+      });
+    }, 20000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <Layout
@@ -259,10 +234,8 @@ function App() {
       activeView={activeView}
       onViewChange={(view) => setActiveView(view)}
     >
-      {/* Toast Alert Banner for Live Incoming Grievances */}
       <Toast toast={activeToast} onClose={() => setActiveToast(null)} />
 
-      {/* 1. Mobile Passenger View */}
       {activeView === 'passenger' && (
         <PassengerMobileView
           sampleComplaint={selectedComplaint || complaintList[0]}
@@ -271,11 +244,10 @@ function App() {
         />
       )}
 
-      {/* 2. Inspector Dashboard View */}
       {activeView === 'dashboard' && (
         <div className="space-y-4">
-          {/* Dashboard Header Bar + Live Clock */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
+          {/* Header Bar with Performance Stress-Test Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold text-slate-800">
@@ -284,22 +256,32 @@ function App() {
                 <RenderCounter componentName="AppInbox" />
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Real-time grievance workflow: New &rarr; Under Review &rarr; Inspector Assigned &rarr; Action Taken &rarr; Closed
+                Stress-tested with memoized rendering and isolated side effects.
               </p>
             </div>
 
-            {/* Live Audit Feed Indicator with ticking clock */}
-            <div className="flex items-center gap-2 self-start sm:self-auto bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-slate-600 font-medium">Audit Clock:</span>
-              <time className="font-mono font-bold text-slate-800" dateTime={lastUpdatedTime.toISOString()}>
-                {lastUpdatedTime.toLocaleTimeString()}
-              </time>
-              <span className="text-[10px] text-slate-400 border-l border-slate-200 pl-2">Live 20s Polling</span>
+            <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+              {/* Stress-Test Toggle Button (20 vs 500+ records) */}
+              <button
+                type="button"
+                onClick={() => setUseBulkData(!useBulkData)}
+                className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  useBulkData
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                    : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                }`}
+                title="Toggle between standard 20 records and 500+ bulk stress-test"
+              >
+                <span>⚡ Load:</span>
+                <strong>{useBulkData ? '500+ Complaints (Stress Test)' : '20 Complaints (Standard)'}</strong>
+              </button>
+
+              {/* Isolated Clock: ticks every second WITHOUT re-rendering App! */}
+              <AuditClock />
             </div>
           </div>
 
-          {/* Filter Bar with Debounced Search */}
+          {/* Fully Controlled FilterBar */}
           <FilterBar
             filters={filters}
             onFilterChange={handleFilterChange}
@@ -309,21 +291,15 @@ function App() {
             severityCounts={severityCounts}
           />
 
-          {/* Master-Detail Layout */}
+          {/* Master-Detail Workspace */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* Left Column: Complaint Cards */}
+            {/* Left Column: List of Complaint Cards (Optimized with React.memo) */}
             <div className="lg:col-span-5 space-y-3 max-h-[70vh] overflow-y-auto pr-1">
               {filteredComplaints.length === 0 ? (
                 <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-500 text-xs">
                   <span className="text-2xl block mb-1">🔍</span>
                   <strong>No matching complaints found</strong>
-                  <p className="mt-1">Try clearing your debounced search or resetting filters.</p>
-                  <button
-                    onClick={handleResetFilters}
-                    className="mt-3 text-xs text-railway-700 font-semibold underline cursor-pointer"
-                  >
-                    Clear all filters
-                  </button>
+                  <p className="mt-1">Try clearing your search query or resetting filters.</p>
                 </div>
               ) : (
                 filteredComplaints.map((item) => (
@@ -332,13 +308,13 @@ function App() {
                     complaint={item}
                     vendorName={vendorMap[item.vendorId]?.name}
                     isSelected={item.id === selectedComplaintId}
-                    onSelect={(c) => setSelectedComplaintId(c.id)}
+                    onSelect={handleSelectComplaint}
                   />
                 ))
               )}
             </div>
 
-            {/* Right Column: Detail & Action Panel */}
+            {/* Right Column: Detail Panel (Wrapped in React.memo) */}
             <div className="lg:col-span-7 sticky top-4">
               <ComplaintDetailPanel
                 complaint={selectedComplaint}
@@ -353,13 +329,12 @@ function App() {
         </div>
       )}
 
-      {/* 3. Analytics Hub */}
       {activeView === 'analytics' && (
         <div className="bg-white p-8 rounded-xl border border-slate-200 text-center space-y-3">
           <span className="text-3xl block" role="img" aria-label="chart">📊</span>
           <h3 className="text-base font-bold text-slate-800">Quality Analytics Hub</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Interactive charts, vendor violation rate tracking, and kitchen safety heatmaps will be introduced in future stages.
+            Aggregated vendor quality scorecards, category distribution, and hygiene violation alerts will be activated in upcoming stages.
           </p>
         </div>
       )}

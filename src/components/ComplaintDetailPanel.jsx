@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { Card, Button, Badge, StarRating } from './ui/index.js';
-import { cn } from '../utils/cn.js';
 import { RenderCounter } from './RenderCounter.jsx';
 
 /**
- * ComplaintDetailPanel with controlled Remarks input and Interactive Status Transitions
- * Demonstrates:
- * - Controlled input for inspector remarks (`remarks` state + `onChange`)
- * - Conditional input validation (disabling transition if remarks are empty for penalties)
- * - RenderCounter debugging
+ * ComplaintDetailPanel wrapped in React.memo
+ * Only re-renders when the selected complaint changes or status updates!
  */
-export function ComplaintDetailPanel({
+export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
   complaint,
   vendor,
   kitchen,
@@ -18,7 +14,6 @@ export function ComplaintDetailPanel({
   onClose,
   onStatusChange
 }) {
-  // Local controlled state for inspector remarks
   const [remarks, setRemarks] = useState('');
   const [actionError, setActionError] = useState('');
 
@@ -52,7 +47,6 @@ export function ComplaintDetailPanel({
   } = complaint;
 
   const handleAction = (nextStatus, defaultRemarks) => {
-    // Validate remarks
     const finalRemarks = remarks.trim() || defaultRemarks;
     if (!finalRemarks) {
       setActionError('Please provide inspector remarks for this status transition.');
@@ -61,7 +55,7 @@ export function ComplaintDetailPanel({
 
     setActionError('');
     onStatusChange(complaint.id, nextStatus, finalRemarks);
-    setRemarks(''); // Reset controlled input
+    setRemarks('');
   };
 
   return (
@@ -247,6 +241,6 @@ export function ComplaintDetailPanel({
       </Card.Footer>
     </Card>
   );
-}
+});
 
 export default ComplaintDetailPanel;
