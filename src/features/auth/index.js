@@ -1,2 +1,2 @@
-// src/features/auth: Authentication, inspector/admin login, role guards
-export const AUTH_MODULE = 'auth';
+export { AuthProvider, useAuth, MOCK_USERS } from './AuthContext.jsx';
+export { ProtectedRoute } from './ProtectedRoute.jsx';
