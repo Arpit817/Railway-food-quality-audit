@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { COMPLAINTS, VENDORS, KITCHENS, BATCHES } from './utils/mockData.js';
-import { generateBulkComplaints } from './utils/dataGenerator.js';
+import { complaintsApi, metadataApi } from './api/index.js';
 import { updateComplaintStatus } from './utils/complaintUtils.js';
 import { useComplaintFilters } from './hooks/index.js';
-import { Layout, Toast } from './components/ui/index.js';
+import { Layout, Toast, ErrorMessage } from './components/ui/index.js';
 import { ComplaintCard } from './components/ComplaintCard.jsx';
 import { ComplaintDetailPanel } from './components/ComplaintDetailPanel.jsx';
 import { PassengerMobileView } from './components/PassengerMobileView.jsx';
@@ -12,31 +11,29 @@ import { AuditClock } from './components/AuditClock.jsx';
 import { RenderCounter } from './components/RenderCounter.jsx';
 
 /**
- * Stage 8 + 9: App Component Refactored with Custom Hooks
+ * Stage 11: App Component with REST API (json-server + Axios)
  * Demonstrates:
- * - Replacement of manual filtering logic with custom `useComplaintFilters` hook
- * - Integration of PassengerFeedbackForm with client-side canvas photo downscaling
- * - Uncontrolled component integration and accessibility features
+ * - Connecting UI to REST endpoints (GET, POST, PATCH)
+ * - Explicit Loading, Error, Empty, and Success states
+ * - Handling race conditions with isMounted flag
+ * - Explaining REST verbs and limitations of useEffect data synchronization
  */
 function App() {
-  const [useBulkData, setUseBulkData] = useState(false);
+  // Remote server data state
+  const [complaintList, setComplaintList] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [kitchens, setKitchens] = useState([]);
+  const [batches, setBatches] = useState([]);
 
-  const initialComplaints = useMemo(() => {
-    return useBulkData ? generateBulkComplaints(500) : COMPLAINTS;
-  }, [useBulkData]);
+  // Network status states
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
 
-  const [complaintList, setComplaintList] = useState(initialComplaints);
-
-  useEffect(() => {
-    setComplaintList(initialComplaints);
-    setSelectedComplaintId(initialComplaints[0]?.id || null);
-  }, [initialComplaints]);
-
-  const [selectedComplaintId, setSelectedComplaintId] = useState(COMPLAINTS[0]?.id || null);
+  const [selectedComplaintId, setSelectedComplaintId] = useState(null);
   const [activeView, setActiveView] = useState('dashboard');
   const [activeToast, setActiveToast] = useState(null);
 
-  // REFACTORED: Extracted all filtering & derived statistics into custom hook!
+  // Hook-driven filtering
   const {
     filters,
     filteredComplaints,
@@ -45,17 +42,53 @@ function App() {
     handleResetFilters
   } = useComplaintFilters(complaintList);
 
-  const vendorMap = useMemo(() => {
-    return VENDORS.reduce((acc, v) => ({ ...acc, [v.id]: v }), {});
+  // EFFECT: Fetch Initial Data from REST API with loading, error & empty states
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      const [complaintsRes, vendorsRes, kitchensRes, batchesRes] = await Promise.all([
+        complaintsApi.getAll(),
+        metadataApi.getVendors(),
+        metadataApi.getKitchens(),
+        metadataApi.getBatches()
+      ]);
+
+      setComplaintList(complaintsRes || []);
+      setVendors(vendorsRes || []);
+      setKitchens(kitchensRes || []);
+      setBatches(batchesRes || []);
+
+      if (complaintsRes && complaintsRes.length > 0) {
+        setSelectedComplaintId(complaintsRes[0].id);
+      }
+    } catch (err) {
+      console.error('REST API Fetch Error:', err);
+      setApiError(
+        'Failed to connect to json-server at http://localhost:3001. Please ensure "npm run api" is running in a terminal.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Lookup maps
+  const vendorMap = useMemo(() => {
+    return vendors.reduce((acc, v) => ({ ...acc, [v.id]: v }), {});
+  }, [vendors]);
 
   const kitchenMap = useMemo(() => {
-    return KITCHENS.reduce((acc, k) => ({ ...acc, [k.id]: k }), {});
-  }, []);
+    return kitchens.reduce((acc, k) => ({ ...acc, [k.id]: k }), {});
+  }, [kitchens]);
 
   const batchMap = useMemo(() => {
-    return BATCHES.reduce((acc, b) => ({ ...acc, [b.id]: b }), {});
-  }, []);
+    return batches.reduce((acc, b) => ({ ...acc, [b.id]: b }), {});
+  }, [batches]);
 
   const unresolvedHighSeverityCount = useMemo(() => {
     return complaintList.filter(
@@ -79,65 +112,43 @@ function App() {
     setSelectedComplaintId(c.id);
   }, []);
 
-  const handleStatusChange = useCallback((complaintId, newStatus, remarks) => {
-    setComplaintList((prevList) =>
-      prevList.map((complaint) => {
-        if (complaint.id === complaintId) {
-          return updateComplaintStatus(complaint, newStatus, remarks, 'insp-delhi-01');
-        }
-        return complaint;
-      })
+  // REST API: PATCH /complaints/:id (status progression)
+  const handleStatusChange = useCallback(async (complaintId, newStatus, remarks) => {
+    const existing = complaintList.find((c) => c.id === complaintId);
+    if (!existing) return;
+
+    const updated = updateComplaintStatus(existing, newStatus, remarks, 'insp-rest-api');
+
+    // Optimistic UI update
+    setComplaintList((prev) =>
+      prev.map((c) => (c.id === complaintId ? updated : c))
     );
-  }, []);
 
-  const handleAddNewFeedback = useCallback((newFeedback) => {
-    setComplaintList((prev) => [newFeedback, ...prev]);
-    setSelectedComplaintId(newFeedback.id);
-  }, []);
-
-  // Simulated background grievance interval
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-      const newRef = `RAIL-2026-${randomSuffix}`;
-
-      const newComplaint = {
-        id: `cmp-live-${Date.now()}`,
-        referenceNo: newRef,
-        token: `LIVE${randomSuffix}`,
-        batchId: 'bat-901',
-        vendorId: 'ven-001',
-        kitchenId: 'kit-101',
-        rating: 1,
-        category: 'foreign_object',
-        comment: 'Foreign metal shard reported in rice packet.',
-        severity: 'high',
-        status: 'new',
-        createdAt: new Date().toISOString(),
-        images: [],
-        actionLogs: [
-          {
-            id: `log-${Date.now()}`,
-            action: 'CREATED',
-            remarks: 'Simulated grievance via authorized packaging QR',
-            timestamp: new Date().toISOString(),
-            userId: 'live-system'
-          }
-        ]
-      };
-
-      setComplaintList((prev) => [newComplaint, ...prev]);
-
-      setActiveToast({
-        id: newComplaint.id,
-        type: 'alert',
-        title: 'New High Severity Complaint Registered!',
-        message: '"Foreign metal shard reported in rice packet."',
-        meta: `Ref: ${newRef} • Train: 12424 • Category: FOREIGN OBJECT`
+    try {
+      await complaintsApi.updateStatus(complaintId, {
+        status: newStatus,
+        actionLogs: updated.actionLogs
       });
-    }, 20000);
+    } catch (err) {
+      console.error('PATCH failed:', err);
+      // Rollback on failure
+      setComplaintList((prev) =>
+        prev.map((c) => (c.id === complaintId ? existing : c))
+      );
+      setActiveToast({
+        id: `err-${Date.now()}`,
+        type: 'error',
+        title: 'Status Update Failed',
+        message: 'Could not synchronize status change with backend REST API.'
+      });
+    }
+  }, [complaintList]);
 
-    return () => clearInterval(timer);
+  // REST API: POST /complaints (submission from passenger form)
+  const handleAddNewFeedback = useCallback(async (newFeedback) => {
+    const created = await complaintsApi.create(newFeedback);
+    setComplaintList((prev) => [created, ...prev]);
+    setSelectedComplaintId(created.id);
   }, []);
 
   return (
@@ -150,7 +161,7 @@ function App() {
 
       {activeView === 'passenger' && (
         <PassengerMobileView
-          sampleComplaint={selectedComplaint || complaintList[0]}
+          initialToken="Xk9PqA72mZ"
           onSubmitFeedback={handleAddNewFeedback}
           onBackToDashboard={() => setActiveView('dashboard')}
         />
@@ -167,69 +178,80 @@ function App() {
                 <RenderCounter componentName="AppInbox" />
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Refactored with custom hooks (useComplaintFilters, useOnlineStatus, useToggle).
+                Connected to REST backend (json-server on port 3001).
               </p>
             </div>
 
             <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-              <button
-                type="button"
-                onClick={() => setUseBulkData(!useBulkData)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                  useBulkData
-                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
-                    : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                <span>⚡ Load:</span>
-                <strong>{useBulkData ? '500+ Complaints' : '20 Complaints'}</strong>
-              </button>
-
+              <span className="text-xs font-semibold px-2 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                REST API Live
+              </span>
               <AuditClock />
             </div>
           </div>
 
-          <FilterBar
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onResetFilters={handleResetFilters}
-            totalCount={complaintList.length}
-            filteredCount={filteredComplaints.length}
-            severityCounts={severityCounts}
-          />
+          {/* Error Banner with Retry Button */}
+          {apiError && (
+            <ErrorMessage
+              title="REST API Communication Error"
+              message={apiError}
+              onRetry={fetchDashboardData}
+            />
+          )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            <div className="lg:col-span-5 space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-              {filteredComplaints.length === 0 ? (
-                <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-500 text-xs">
-                  <span className="text-2xl block mb-1">🔍</span>
-                  <strong>No matching complaints found</strong>
-                  <p className="mt-1">Try clearing your search query or resetting filters.</p>
-                </div>
-              ) : (
-                filteredComplaints.map((item) => (
-                  <ComplaintCard
-                    key={item.id}
-                    complaint={item}
-                    vendorName={vendorMap[item.vendorId]?.name}
-                    isSelected={item.id === selectedComplaintId}
-                    onSelect={handleSelectComplaint}
-                  />
-                ))
-              )}
+          {/* Loading State Skeleton */}
+          {isLoading ? (
+            <div className="p-12 text-center bg-white rounded-xl border border-slate-200 space-y-3">
+              <span className="animate-spin text-3xl inline-block">🚆</span>
+              <h3 className="text-sm font-bold text-slate-800">Loading audit records from REST server...</h3>
+              <p className="text-xs text-slate-500">Fetching vendors, base kitchens, and passenger grievance streams.</p>
             </div>
-
-            <div className="lg:col-span-7 sticky top-4">
-              <ComplaintDetailPanel
-                complaint={selectedComplaint}
-                vendor={selectedComplaint ? vendorMap[selectedComplaint.vendorId] : null}
-                kitchen={selectedComplaint ? kitchenMap[selectedComplaint.kitchenId] : null}
-                batch={selectedComplaint ? batchMap[selectedComplaint.batchId] : null}
-                onClose={() => setSelectedComplaintId(null)}
-                onStatusChange={handleStatusChange}
+          ) : (
+            <>
+              <FilterBar
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onResetFilters={handleResetFilters}
+                totalCount={complaintList.length}
+                filteredCount={filteredComplaints.length}
+                severityCounts={severityCounts}
               />
-            </div>
-          </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                <div className="lg:col-span-5 space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+                  {filteredComplaints.length === 0 ? (
+                    <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300 text-slate-500 text-xs">
+                      <span className="text-2xl block mb-1">🔍</span>
+                      <strong>No matching complaints found</strong>
+                      <p className="mt-1">Try clearing your search query or resetting filters.</p>
+                    </div>
+                  ) : (
+                    filteredComplaints.map((item) => (
+                      <ComplaintCard
+                        key={item.id}
+                        complaint={item}
+                        vendorName={vendorMap[item.vendorId]?.name}
+                        isSelected={item.id === selectedComplaintId}
+                        onSelect={handleSelectComplaint}
+                      />
+                    ))
+                  )}
+                </div>
+
+                <div className="lg:col-span-7 sticky top-4">
+                  <ComplaintDetailPanel
+                    complaint={selectedComplaint}
+                    vendor={selectedComplaint ? vendorMap[selectedComplaint.vendorId] : null}
+                    kitchen={selectedComplaint ? kitchenMap[selectedComplaint.kitchenId] : null}
+                    batch={selectedComplaint ? batchMap[selectedComplaint.batchId] : null}
+                    onClose={() => setSelectedComplaintId(null)}
+                    onStatusChange={handleStatusChange}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

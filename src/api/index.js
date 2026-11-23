@@ -1,2 +1,2 @@
-// src/api: Axios instance, REST endpoints, resource API functions
-export const API_MODULE = 'api';
+export { default as api } from './client.js';
+export { complaintsApi, metadataApi } from './complaintsApi.js';
