@@ -1,6 +1,7 @@
 export { DashboardLayout } from './DashboardLayout.jsx';
 export { ComplaintsPage } from './ComplaintsPage.jsx';
 export { VendorsPage } from './VendorsPage.jsx';
+export { QualityAnalyticsPage } from './QualityAnalyticsPage.jsx';
 export { AdminBatchesPage } from './AdminBatchesPage.jsx';
 export { QRLandingPage } from './QRLandingPage.jsx';
 export { TrackPage } from './TrackPage.jsx';
