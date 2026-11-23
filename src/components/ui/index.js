@@ -6,3 +6,5 @@ export { EmptyState } from './EmptyState.jsx';
 export { ErrorMessage } from './ErrorMessage.jsx';
 export { Layout } from './Layout.jsx';
 export { Toast } from './Toast.jsx';
+export { FormField, TextInput, TextArea } from './FormControls.jsx';
+export { FileInput } from './FileInput.jsx';
