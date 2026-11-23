@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Card, Button, Badge, StarRating } from './ui/index.js';
 import { RenderCounter } from './RenderCounter.jsx';
+import { inspectorActionSchema } from '../utils/validationSchemas.js';
 
 /**
- * ComplaintDetailPanel wrapped in React.memo
- * Only re-renders when the selected complaint changes or status updates!
+ * ComplaintDetailPanel with Zod-validated Inspector Status Progression
+ * Demonstrates:
+ * - Validating inspector action remarks with Zod `inspectorActionSchema.safeParse`
+ * - Enforcing min 15 characters of remarks for closure/penalties
+ * - Displaying validation errors under the input
  */
 export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
   complaint,
@@ -15,7 +19,7 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
   onStatusChange
 }) {
   const [remarks, setRemarks] = useState('');
-  const [actionError, setActionError] = useState('');
+  const [zodError, setZodError] = useState('');
 
   if (!complaint) {
     return (
@@ -42,18 +46,27 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
     createdAt,
     pnr,
     seat,
+    phone,
     images = [],
     actionLogs = []
   } = complaint;
 
   const handleAction = (nextStatus, defaultRemarks) => {
     const finalRemarks = remarks.trim() || defaultRemarks;
-    if (!finalRemarks) {
-      setActionError('Please provide inspector remarks for this status transition.');
+
+    // Validate with Zod schema
+    const validation = inspectorActionSchema.safeParse({
+      status: nextStatus,
+      remarks: finalRemarks
+    });
+
+    if (!validation.success) {
+      const errorMsg = validation.error.flatten().fieldErrors.remarks?.[0] || 'Invalid transition remarks.';
+      setZodError(errorMsg);
       return;
     }
 
-    setActionError('');
+    setZodError('');
     onStatusChange(complaint.id, nextStatus, finalRemarks);
     setRemarks('');
   };
@@ -128,6 +141,11 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
             <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal">
               "{comment}"
             </p>
+            {phone && (
+              <p className="text-[11px] text-slate-500 mt-2 border-t border-slate-200/60 pt-1.5">
+                📞 Contact for resolution: <strong>{phone}</strong>
+              </p>
+            )}
           </div>
         </section>
 
@@ -147,11 +165,11 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
           </section>
         )}
 
-        {/* Controlled Remarks Input Box for Inspector */}
+        {/* Controlled Remarks Input with Zod Validation */}
         {status !== 'closed' && (
           <section className="bg-amber-50/50 p-3 rounded-lg border border-amber-200/70 space-y-2">
             <label htmlFor="inspector-remarks" className="block text-xs font-bold text-amber-900">
-              Inspector Resolution Remarks / Action Notes:
+              Inspector Resolution Remarks / Action Notes (Zod Validated):
             </label>
             <input
               id="inspector-remarks"
@@ -159,13 +177,13 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
               value={remarks}
               onChange={(e) => {
                 setRemarks(e.target.value);
-                if (actionError) setActionError('');
+                if (zodError) setZodError('');
               }}
-              placeholder="e.g. Dispatched officer to pantry car, sample collected for lab test..."
+              placeholder="Min 15 chars for closure/penalties: e.g. Fine levied under IRCTC Clause 8..."
               className="w-full text-xs p-2 rounded border border-amber-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
-            {actionError && (
-              <p className="text-[11px] text-red-600 font-semibold">{actionError}</p>
+            {zodError && (
+              <p className="text-[11px] text-red-600 font-semibold animate-in fade-in">{zodError}</p>
             )}
           </section>
         )}
@@ -194,7 +212,7 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
         </section>
       </Card.Body>
 
-      {/* Action Footer with State Machine Transitions */}
+      {/* Action Footer */}
       <Card.Footer className="bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2 justify-end">
         {status === 'new' && (
           <Button
@@ -227,7 +245,7 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
           <Button
             size="sm"
             variant="secondary"
-            onClick={() => handleAction('closed', 'Resolution verified and complaint closed')}
+            onClick={() => handleAction('closed', 'Resolution verified and complaint closed by authority')}
           >
             Close Complaint
           </Button>

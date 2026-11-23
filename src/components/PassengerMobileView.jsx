@@ -2,26 +2,21 @@ import React, { useState, useRef } from 'react';
 import { Card, Button, FormField, TextInput, TextArea, FileInput, StarRating } from './ui/index.js';
 import { useOnlineStatus, useToggle } from '../hooks/index.js';
 import { COMPLAINT_CATEGORIES, calculateSeverity, generateReferenceNumber } from '../utils/complaintUtils.js';
+import { feedbackSchema } from '../utils/validationSchemas.js';
 
 /**
- * Stage 9: PassengerFeedbackForm (inside Mobile View)
+ * PassengerMobileView with Zod Validation
  * Demonstrates:
- * - Controlled components for all primary fields (rating, category, comment, PNR, phone)
- * - ONE UNCONTROLLED COMPONENT using useRef (coach/seat note field) as required by syllabus Unit IV
- * - Custom hooks integration: useOnlineStatus (shows offline warning banner), useToggle (for anonymous mode)
- * - 1-3 photo upload with camera trigger and client-side canvas resize
- * - Conditional Form Fields: Foreign object specific details, contact follow-up phone
- * - Form Accessibility: aria-describedby, labels, auto-focusing on first invalid field
- * - Submission workflow with reference tracking screen
+ * - Integration of Zod schema via `safeParse`
+ * - Mapping Zod field errors to React component error state
+ * - Validate on blur and validate on submit workflows
+ * - Multi-field conditional refinements (detailed comments for high severity, foreign object specifics)
  */
 export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackToDashboard }) {
-  // Custom hook: detect train network connectivity
   const isOnline = useOnlineStatus();
-
-  // Custom hook: toggle anonymous mode
   const [isAnonymous, toggleAnonymous] = useToggle(false);
 
-  // Controlled Form State
+  // Form State
   const [rating, setRating] = useState(1);
   const [category, setCategory] = useState('hygiene_issue');
   const [comment, setComment] = useState('');
@@ -30,12 +25,11 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
   const [phone, setPhone] = useState('');
   const [images, setImages] = useState([]);
 
-  // Form errors state
-  const [errors, setErrors] = useState({});
+  // Zod-driven field error map: { comment: "...", pnr: "...", phone: "..." }
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submittedRef, setSubmittedRef] = useState(null);
 
-  // UNCONTROLLED COMPONENT REF: Required by syllabus Unit IV
-  // Demonstrates accessing DOM values via ref instead of controlled state
+  // Uncontrolled component ref for seat
   const seatRef = useRef(null);
   const commentInputRef = useRef(null);
 
@@ -52,50 +46,84 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
 
   const derivedSeverity = calculateSeverity(category, rating);
 
-  // Client-side validation before submission
-  const validateForm = () => {
-    const newErrors = {};
+  /**
+   * Validates single field on blur using Zod shape
+   */
+  const handleBlurField = (field, value) => {
+    // Construct full data object to allow multi-field superRefine
+    const currentData = {
+      rating,
+      category,
+      comment,
+      foreignObjectDetail,
+      pnr: pnr || undefined,
+      phone: phone || undefined,
+      isAnonymous,
+      seat: seatRef.current?.value || 'Coach B2-19',
+      images,
+      [field]: value
+    };
 
-    if (!comment.trim()) {
-      newErrors.comment = 'Please describe the problem with the meal.';
-    } else if (comment.trim().length < 10) {
-      newErrors.comment = 'Description must be at least 10 characters long.';
+    const result = feedbackSchema.safeParse(currentData);
+    if (!result.success) {
+      const flattened = result.error.flatten().fieldErrors;
+      setFieldErrors((prev) => ({
+        ...prev,
+        [field]: flattened[field] ? flattened[field][0] : undefined
+      }));
+    } else {
+      setFieldErrors((prev) => ({
+        ...prev,
+        [field]: undefined
+      }));
     }
-
-    if (category === 'foreign_object' && !foreignObjectDetail.trim()) {
-      newErrors.foreignObject = 'Please specify the foreign object (e.g. wire, plastic shard).';
-    }
-
-    if (pnr && !/^\d{10}$/.test(pnr.trim())) {
-      newErrors.pnr = 'Indian Railway PNR must be exactly 10 digits.';
-    }
-
-    if (!isAnonymous && phone && !/^[6-9]\d{9}$/.test(phone.trim())) {
-      newErrors.phone = 'Please enter a valid 10-digit Indian mobile number.';
-    }
-
-    setErrors(newErrors);
-
-    // Auto-focus first invalid field for accessibility
-    if (newErrors.comment && commentInputRef.current) {
-      commentInputRef.current.focus();
-    }
-
-    return Object.keys(newErrors).length === 0;
   };
 
+  /**
+   * Validates full form on submit using Zod safeParse
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    const seatValue = seatRef.current?.value || 'Coach B2-19';
 
-    // Read value from uncontrolled component ref
-    const seatValue = seatRef.current?.value || 'Unspecified Berth';
+    const formData = {
+      rating,
+      category,
+      comment,
+      foreignObjectDetail: foreignObjectDetail || undefined,
+      pnr: pnr.trim() || undefined,
+      phone: phone.trim() || undefined,
+      isAnonymous,
+      seat: seatValue,
+      images
+    };
 
+    // ZOD SAFE PARSE VALIDATION
+    const validationResult = feedbackSchema.safeParse(formData);
+
+    if (!validationResult.success) {
+      // Extract flattened error map: { [field]: [error1, error2] }
+      const errors = validationResult.error.flatten().fieldErrors;
+      const formattedErrors = {};
+      Object.keys(errors).forEach((key) => {
+        formattedErrors[key] = errors[key][0];
+      });
+      setFieldErrors(formattedErrors);
+
+      // Auto-focus first invalid input for accessibility
+      if (formattedErrors.comment && commentInputRef.current) {
+        commentInputRef.current.focus();
+      }
+      return;
+    }
+
+    // Validation passed cleanly
+    setFieldErrors({});
     const refNo = generateReferenceNumber();
 
     const fullComment = category === 'foreign_object'
-      ? `${comment} [Item Found: ${foreignObjectDetail}]`
+      ? `${comment} [Contaminant: ${foreignObjectDetail}]`
       : comment;
 
     const newFeedback = {
@@ -134,20 +162,18 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
 
   return (
     <div className="max-w-md mx-auto py-2 sm:py-4 px-2">
-      {/* Offline Banner using useOnlineStatus hook */}
       {!isOnline && (
         <div
           role="status"
-          className="mb-3 bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-2 animate-bounce shadow-md"
+          className="mb-3 bg-red-600 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-2 shadow-md animate-bounce"
         >
           <span>📶</span>
           <span>
-            <strong>No Internet Connection:</strong> Travelling through a remote tunnel? Reconnecting...
+            <strong>No Internet Connection:</strong> Operating in offline train mode.
           </span>
         </div>
       )}
 
-      {/* Top Banner Navigation */}
       <div className="flex items-center justify-between mb-4 bg-slate-200/80 px-3 py-2 rounded-lg text-xs">
         <span className="font-semibold text-slate-700">📱 Mobile Passenger Simulation</span>
         <button
@@ -159,7 +185,6 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
       </div>
 
       <Card className="border-railway-200 shadow-md">
-        {/* Mobile Scanned Header */}
         <div className="bg-railway-700 text-white p-4 text-center">
           <span className="text-2xl mb-1 block" role="img" aria-label="train">🚆</span>
           <h2 className="text-base font-bold">Authorized Packaging Scanned</h2>
@@ -169,7 +194,6 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
           </div>
         </div>
 
-        {/* Pre-filled Traceability Context */}
         <div className="bg-railway-50 px-4 py-3 border-b border-railway-100 text-xs space-y-1">
           <div className="flex justify-between text-slate-600">
             <span>Train No:</span> <strong className="text-slate-900">12424 (Rajdhani)</strong>
@@ -182,7 +206,6 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
           </div>
         </div>
 
-        {/* Form Body */}
         <div className="p-4 space-y-4">
           {submittedRef ? (
             <div className="text-center py-6 space-y-3">
@@ -191,7 +214,7 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
               </div>
               <h3 className="text-base font-bold text-slate-800">Complaint Registered!</h3>
               <p className="text-xs text-slate-600 max-w-xs mx-auto">
-                Your report has been logged with <strong>{derivedSeverity.toUpperCase()}</strong> severity. Safety inspectors for Northern Zone have been notified.
+                Validated and registered with <strong>{derivedSeverity.toUpperCase()}</strong> severity. Safety teams have been alerted.
               </p>
               <div className="bg-slate-100 p-3 rounded-lg text-xs font-mono font-bold text-slate-800 border border-slate-200">
                 Tracking Ref: {submittedRef}
@@ -211,20 +234,23 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              {/* 1. Star Rating Input */}
-              <FormField label="Meal Quality Rating" required>
+              {/* Star Rating Input */}
+              <FormField label="Meal Quality Rating" required error={fieldErrors.rating}>
                 <div className="flex justify-center py-2.5 bg-slate-50 rounded-lg border border-slate-200/80">
                   <StarRating
                     rating={rating}
                     size="lg"
                     interactive={true}
-                    onChange={(r) => setRating(r)}
+                    onChange={(r) => {
+                      setRating(r);
+                      if (fieldErrors.rating) setFieldErrors((p) => ({ ...p, rating: undefined }));
+                    }}
                   />
                 </div>
               </FormField>
 
-              {/* 2. Category Radio Group */}
-              <FormField label="Complaint Category" required>
+              {/* Category Radio Group */}
+              <FormField label="Complaint Category" required error={fieldErrors.category}>
                 <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label="Complaint Category">
                   {COMPLAINT_CATEGORIES.map((catKey) => {
                     const item = categoryLabels[catKey] || { label: catKey, icon: '📌' };
@@ -236,7 +262,10 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                         type="button"
                         role="radio"
                         aria-checked={isSelected}
-                        onClick={() => setCategory(catKey)}
+                        onClick={() => {
+                          setCategory(catKey);
+                          if (fieldErrors.category) setFieldErrors((p) => ({ ...p, category: undefined }));
+                        }}
                         className={`flex items-center gap-2 p-2 rounded-lg border text-xs font-medium transition-all text-left min-h-[42px] cursor-pointer ${
                           isSelected
                             ? 'border-railway-600 bg-railway-50 text-railway-900 font-bold ring-1 ring-railway-500'
@@ -251,31 +280,42 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                 </div>
               </FormField>
 
-              {/* Conditional Field: Foreign Object Specification */}
+              {/* Conditional Field: Foreign Object Contaminant */}
               {category === 'foreign_object' && (
                 <FormField
                   label="Identify Contaminant"
                   htmlFor="foreign-object-detail"
                   required
-                  error={errors.foreignObject}
-                  helperText="Describe what was found in the food container"
+                  error={fieldErrors.foreignObjectDetail}
+                  helperText="Specify object found (Zod requires min 3 characters)"
                 >
                   <TextInput
                     id="foreign-object-detail"
                     value={foreignObjectDetail}
-                    onChange={(e) => setForeignObjectDetail(e.target.value)}
-                    placeholder="e.g. Iron staple wire, insect, glass chip..."
-                    error={errors.foreignObject}
+                    onChange={(e) => {
+                      setForeignObjectDetail(e.target.value);
+                      if (fieldErrors.foreignObjectDetail) {
+                        setFieldErrors((p) => ({ ...p, foreignObjectDetail: undefined }));
+                      }
+                    }}
+                    onBlur={(e) => handleBlurField('foreignObjectDetail', e.target.value)}
+                    placeholder="e.g. Staple pin, insect, glass shard, pebble..."
+                    error={fieldErrors.foreignObjectDetail}
                   />
                 </FormField>
               )}
 
-              {/* 3. Description with character counter */}
+              {/* Description with Character Counter */}
               <FormField
                 label="Describe the Issue"
                 htmlFor="passenger-comment"
                 required
-                error={errors.comment}
+                error={fieldErrors.comment}
+                helperText={
+                  category === 'foreign_object' || category === 'hygiene_issue' || rating === 1
+                    ? 'High-severity safety issues require at least 20 characters.'
+                    : 'Minimum 10 characters required.'
+                }
               >
                 <div ref={commentInputRef} tabIndex={-1}>
                   <TextArea
@@ -283,17 +323,22 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                     rows={3}
                     maxLength={500}
                     value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Provide details about food hygiene, temperature, taste or quantity..."
-                    error={errors.comment}
+                    onChange={(e) => {
+                      setComment(e.target.value);
+                      if (fieldErrors.comment) setFieldErrors((p) => ({ ...p, comment: undefined }));
+                    }}
+                    onBlur={(e) => handleBlurField('comment', e.target.value)}
+                    placeholder="Detail the issue with food hygiene, foreign elements, taste or portion..."
+                    error={fieldErrors.comment}
                   />
                 </div>
               </FormField>
 
-              {/* 4. 1-3 Photographic Evidence with Camera & Canvas Resize */}
+              {/* 1-3 Photos */}
               <FormField
-                label="Photographic Proof (1 to 3 Photos)"
-                helperText="Camera photos are automatically downscaled client-side for rapid transmission."
+                label="Photographic Evidence (1 to 3 Photos)"
+                error={fieldErrors.images}
+                helperText="Camera photos are resized client-side via Canvas to <50KB."
               >
                 <FileInput
                   images={images}
@@ -302,25 +347,28 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                 />
               </FormField>
 
-              {/* 5. Optional Travel Details (PNR & UNCONTROLLED Seat Ref) */}
+              {/* PNR & Uncontrolled Seat */}
               <div className="grid grid-cols-2 gap-2">
-                <FormField label="PNR (Optional)" htmlFor="pnr-input" error={errors.pnr}>
+                <FormField label="PNR (Optional)" htmlFor="pnr-input" error={fieldErrors.pnr}>
                   <TextInput
                     id="pnr-input"
                     type="text"
                     maxLength={10}
                     value={pnr}
-                    onChange={(e) => setPnr(e.target.value)}
+                    onChange={(e) => {
+                      setPnr(e.target.value);
+                      if (fieldErrors.pnr) setFieldErrors((p) => ({ ...p, pnr: undefined }));
+                    }}
+                    onBlur={(e) => handleBlurField('pnr', e.target.value)}
                     placeholder="10-digit PNR"
-                    error={errors.pnr}
+                    error={fieldErrors.pnr}
                   />
                 </FormField>
 
-                {/* UNCONTROLLED COMPONENT EXAMPLE using useRef */}
                 <FormField
                   label="Coach / Seat (Uncontrolled)"
                   htmlFor="seat-uncontrolled-input"
-                  helperText="Ref-based uncontrolled input"
+                  error={fieldErrors.seat}
                 >
                   <input
                     ref={seatRef}
@@ -333,7 +381,7 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                 </FormField>
               </div>
 
-              {/* 6. Anonymous Toggle & Conditional Phone Field */}
+              {/* Anonymous Toggle & Mobile Number */}
               <div className="pt-2 border-t border-slate-100 space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
@@ -343,7 +391,7 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                     className="rounded text-railway-600 focus:ring-railway-500 w-4 h-4 cursor-pointer"
                   />
                   <span className="text-xs font-semibold text-slate-700">
-                    File anonymously (hide my contact details)
+                    File anonymously (hide personal details)
                   </span>
                 </label>
 
@@ -351,17 +399,22 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                   <FormField
                     label="Mobile Number (For SMS Tracking)"
                     htmlFor="phone-input"
-                    error={errors.phone}
-                    helperText="We send SMS updates as the inspector reviews your complaint."
+                    required
+                    error={fieldErrors.phone}
+                    helperText="Required for SMS resolution notifications."
                   >
                     <TextInput
                       id="phone-input"
                       type="tel"
                       maxLength={10}
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="10-digit mobile number"
-                      error={errors.phone}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        if (fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: undefined }));
+                      }}
+                      onBlur={(e) => handleBlurField('phone', e.target.value)}
+                      placeholder="10-digit mobile (starting with 6-9)"
+                      error={fieldErrors.phone}
                     />
                   </FormField>
                 )}
@@ -373,7 +426,7 @@ export function PassengerMobileView({ sampleComplaint, onSubmitFeedback, onBackT
                 size="md"
                 className="w-full h-11 text-sm font-semibold"
               >
-                Submit Quality Audit Grievance
+                Submit Validated Grievance
               </Button>
             </form>
           )}
