@@ -9,6 +9,8 @@
  * - Complaints (20 realistic railway passenger feedback entries)
  */
 
+import { EVIDENCE_IMAGES } from './evidenceImages.js';
+
 export const VENDORS = [
   {
     id: 'ven-001',
@@ -128,7 +130,7 @@ export const COMPLAINTS = [
     pnr: '2849102941',
     seat: 'B3-42',
     createdAt: '2026-11-18T08:15:00Z',
-    images: ['https://placehold.co/600x400?text=Insect+In+Dal'],
+    images: [EVIDENCE_IMAGES.insectInDal],
     actionLogs: [
       {
         id: 'log-001',
@@ -161,7 +163,7 @@ export const COMPLAINTS = [
     pnr: '2849105521',
     seat: 'B2-19',
     createdAt: '2026-11-18T08:30:00Z',
-    images: ['https://placehold.co/600x400?text=Greasy+Packaging'],
+    images: [EVIDENCE_IMAGES.greasyPackaging],
     actionLogs: [
       {
         id: 'log-003',
@@ -246,7 +248,7 @@ export const COMPLAINTS = [
     pnr: '1249824490',
     seat: 'C2-58',
     createdAt: '2026-11-18T09:40:00Z',
-    images: ['https://placehold.co/600x400?text=Leaked+Curry'],
+    images: [EVIDENCE_IMAGES.leakedCurry],
     actionLogs: [
       {
         id: 'log-007',
@@ -312,7 +314,7 @@ export const COMPLAINTS = [
     pnr: '2849109923',
     seat: 'B5-33',
     createdAt: '2026-11-18T12:45:00Z',
-    images: ['https://placehold.co/600x400?text=Staple+In+Rice'],
+    images: [EVIDENCE_IMAGES.stapleInRice],
     actionLogs: [
       {
         id: 'log-011',
@@ -338,7 +340,7 @@ export const COMPLAINTS = [
     pnr: '2849110482',
     seat: 'B6-04',
     createdAt: '2026-11-18T13:00:00Z',
-    images: ['https://placehold.co/600x400?text=Bill+Overcharge'],
+    images: [EVIDENCE_IMAGES.billOvercharge],
     actionLogs: [
       {
         id: 'log-012',
@@ -364,7 +366,7 @@ export const COMPLAINTS = [
     pnr: '4510293811',
     seat: 'E1-12',
     createdAt: '2026-11-18T09:10:00Z',
-    images: ['https://placehold.co/600x400?text=Fermented+Food'],
+    images: [EVIDENCE_IMAGES.fermentedFood],
     actionLogs: [
       {
         id: 'log-013',
@@ -456,7 +458,7 @@ export const COMPLAINTS = [
     pnr: '4510299901',
     seat: 'B1-18',
     createdAt: '2026-11-18T11:15:00Z',
-    images: ['https://placehold.co/600x400?text=Stone+In+Rice'],
+    images: [EVIDENCE_IMAGES.stoneInRice],
     actionLogs: [
       {
         id: 'log-018',
@@ -548,7 +550,7 @@ export const COMPLAINTS = [
     pnr: '7829104432',
     seat: 'S3-51',
     createdAt: '2026-11-18T07:15:00Z',
-    images: ['https://placehold.co/600x400?text=Sambar+Contamination'],
+    images: [EVIDENCE_IMAGES.sambarContamination],
     actionLogs: [
       {
         id: 'log-023',
@@ -692,7 +694,7 @@ export const COMPLAINTS = [
     pnr: '1249829910',
     seat: 'C3-22',
     createdAt: '2026-11-18T10:05:00Z',
-    images: ['https://placehold.co/600x400?text=Plastic+Shard'],
+    images: [EVIDENCE_IMAGES.plasticShard],
     actionLogs: [
       {
         id: 'log-030',

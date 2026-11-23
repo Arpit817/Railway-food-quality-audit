@@ -26,20 +26,20 @@ export function Layout({
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900 antialiased">
       {/* Mobile Top Header (hidden on md and above) */}
       <header className="md:hidden bg-railway-800 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
-        <div className="flex items-center gap-2.5">
+        <a href="/dashboard" className="flex items-center gap-2.5 focus:outline-none">
           <span className="text-xl" role="img" aria-label="train">🚆</span>
           <div>
             <h1 className="text-sm font-bold tracking-tight">RailFood Audit</h1>
             <p className="text-[10px] text-railway-200">IRCTC Quality Assurance</p>
           </div>
-        </div>
+        </a>
 
         <button
           type="button"
           aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
           aria-expanded={mobileMenuOpen}
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-lg bg-railway-700 hover:bg-railway-600 focus:outline-none focus:ring-2 focus:ring-white"
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg bg-railway-700 hover:bg-railway-600 focus:outline-none focus:ring-2 focus:ring-white cursor-pointer"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             {mobileMenuOpen ? (
@@ -86,15 +86,15 @@ export function Layout({
         className="hidden md:flex flex-col w-64 bg-railway-900 text-white border-r border-railway-800 flex-shrink-0"
       >
         <div className="p-5 border-b border-railway-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-railway-700 flex items-center justify-center text-xl shadow-inner">
+          <a href="/dashboard" className="flex items-center gap-3 group focus:outline-none">
+            <div className="w-10 h-10 rounded-xl bg-railway-700 flex items-center justify-center text-xl shadow-inner group-hover:scale-105 transition-transform">
               🚆
             </div>
             <div>
               <h1 className="text-base font-bold tracking-tight text-white leading-tight">RailFood Audit</h1>
               <p className="text-xs text-railway-300">Food Safety & Traceability</p>
             </div>
-          </div>
+          </a>
         </div>
 
         <nav className="flex-1 p-4 space-y-1.5" aria-label="Main Menu">

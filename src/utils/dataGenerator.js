@@ -1,5 +1,6 @@
 import { VENDORS, KITCHENS, BATCHES } from './mockData.js';
 import { calculateSeverity } from './complaintUtils.js';
+import { createEvidenceImage } from './evidenceImages.js';
 
 const SAMPLE_COMMENTS = {
   hygiene_issue: [
@@ -102,7 +103,7 @@ export function generateBulkComplaints(count = 500) {
       pnr: `${1000000000 + i}`,
       seat: `Coach B${(i % 5) + 1}-${(i % 60) + 1}`,
       createdAt,
-      images: i % 3 === 0 ? ['https://placehold.co/600x400?text=Food+Evidence'] : [],
+      images: i % 3 === 0 ? [createEvidenceImage(`Audit Sample #${id}`, 'Routine Inspection Evidence')] : [],
       actionLogs: [
         {
           id: `log-${id}-1`,

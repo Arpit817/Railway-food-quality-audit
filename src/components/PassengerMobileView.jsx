@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, Button, FormField, TextInput, TextArea, FileInput, StarRating, ErrorMessage } from './ui/index.js';
 import { useOnlineStatus, useToggle } from '../hooks/index.js';
 import { COMPLAINT_CATEGORIES, calculateSeverity, generateReferenceNumber } from '../utils/complaintUtils.js';
 import { feedbackSchema } from '../utils/validationSchemas.js';
 import { useTokenResolutionQuery, useMetadataQuery, useCreateComplaintMutation } from '../api/index.js';
+import { useUIStore } from '../store/uiStore.js';
 
 export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashboard }) {
+  useEffect(() => {
+    document.title = 'Passenger Grievance Portal — RailFood Audit';
+  }, []);
+
   const isOnline = useOnlineStatus();
   const [isAnonymous, toggleAnonymous] = useToggle(false);
 
@@ -205,14 +211,37 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashb
                 </div>
                 <h3 className="text-base font-bold text-slate-800">Complaint Registered!</h3>
                 <p className="text-xs text-slate-600 max-w-xs mx-auto">
-                  Synchronized into server cache with <strong>{derivedSeverity.toUpperCase()}</strong> severity. Safety inspectors for Northern Zone have been alerted.
+                  Registered with <strong>{derivedSeverity.toUpperCase()}</strong> priority. Railway Food Safety Officers have been alerted.
                 </p>
-                <div className="bg-slate-100 p-3 rounded-lg text-xs font-mono font-bold text-slate-800 border border-slate-200">
-                  Tracking Ref: {submittedRef}
+                <div className="bg-slate-100 p-3 rounded-lg text-xs font-mono font-bold text-slate-800 border border-slate-200 flex items-center justify-between">
+                  <span>Ref: {submittedRef}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator?.clipboard) {
+                        navigator.clipboard.writeText(submittedRef);
+                        useUIStore.getState().showToast({
+                          type: 'success',
+                          title: 'Copied',
+                          message: `Reference ${submittedRef} copied to clipboard.`
+                        });
+                      }
+                    }}
+                    className="text-xs text-railway-700 hover:text-railway-900 underline font-sans font-semibold cursor-pointer"
+                  >
+                    Copy
+                  </button>
                 </div>
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => { setSubmittedRef(null); setComment(''); setImages([]); }}>
-                  Submit Another Grievance
-                </Button>
+                <div className="flex flex-col gap-2 pt-2">
+                  <Link to={`/track/${submittedRef}`}>
+                    <Button variant="primary" size="sm" className="w-full min-h-[44px]">
+                      Track Real-Time Status &rarr;
+                    </Button>
+                  </Link>
+                  <Button variant="outline" size="sm" className="w-full min-h-[44px]" onClick={() => { setSubmittedRef(null); setComment(''); setImages([]); }}>
+                    Submit Another Grievance
+                  </Button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -322,7 +351,7 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashb
                   loading={createComplaintMutation.isPending}
                   className="w-full h-11 text-sm font-semibold"
                 >
-                  {createComplaintMutation.isPending ? 'Submitting to React Query...' : 'Submit Validated Grievance'}
+                  {createComplaintMutation.isPending ? 'Submitting Grievance...' : 'Submit Validated Grievance'}
                 </Button>
               </form>
             )}

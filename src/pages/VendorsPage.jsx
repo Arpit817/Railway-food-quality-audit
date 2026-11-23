@@ -1,9 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useComplaintsQuery, useMetadataQuery } from '../api/index.js';
 import { getVendorStats } from '../utils/complaintUtils.js';
 import { Card, StarRating, Badge } from '../components/ui/index.js';
 
 export function VendorsPage() {
+  useEffect(() => {
+    document.title = 'Vendor Scorecards — RailFood Audit';
+  }, []);
+
   const { data: complaints = [] } = useComplaintsQuery();
   const { vendors = [], kitchens = [] } = useMetadataQuery();
 
@@ -24,17 +28,17 @@ export function VendorsPage() {
       <div>
         <h2 className="text-lg font-bold text-slate-800">Catering Vendor Audit Scorecards</h2>
         <p className="text-xs text-slate-500">
-          Aggregated performance metrics derived using Stage 1 <code>getVendorStats</code> business logic.
+          Real-time vendor compliance indices aggregated across zonal base kitchens and customer audit submissions.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {vendorStats.map((vendor) => (
-          <Card key={vendor.id} className="p-5 space-y-4 border-slate-200">
+          <Card key={vendor.id} className="p-5 space-y-4 border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">{vendor.name}</h3>
-                <span className="text-[11px] font-mono text-slate-400">License: {vendor.licenseNo}</span>
+                <span className="text-[11px] font-mono text-slate-500">License: {vendor.licenseNo}</span>
               </div>
               {vendor.stats.repeatViolations ? (
                 <Badge variant="high">Repeat Violator</Badge>
@@ -64,9 +68,18 @@ export function VendorsPage() {
               </div>
             </div>
 
-            <div className="text-[11px] text-slate-500 border-t border-slate-100 pt-2 flex justify-between">
-              <span>Contact: {vendor.contact}</span>
-              <span className="text-emerald-700 font-semibold">{vendor.stats.resolvedCount} Resolved</span>
+            <div className="text-[11px] text-slate-600 border-t border-slate-100 pt-3 flex flex-wrap items-center justify-between gap-2">
+              <a
+                href={`tel:${vendor.contact.replace(/\s+/g, '')}`}
+                className="text-railway-700 hover:text-railway-900 font-medium hover:underline flex items-center gap-1 min-h-[32px]"
+                title={`Call ${vendor.name}`}
+              >
+                <span>📞</span>
+                <span>{vendor.contact}</span>
+              </a>
+              <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                {vendor.stats.resolvedCount} Resolved
+              </span>
             </div>
           </Card>
         ))}

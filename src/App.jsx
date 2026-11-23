@@ -2,6 +2,8 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, ProtectedRoute } from './features/auth/index.js';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
+import { Toast } from './components/ui/Toast.jsx';
+import { useUIStore } from './store/uiStore.js';
 
 // Lazy loaded page components
 const DashboardLayout = lazy(() => import('./pages/DashboardLayout.jsx'));
@@ -17,22 +19,27 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'));
 function RouteFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 text-xs">
-      <div className="flex items-center gap-2">
-        <span className="animate-spin text-xl">🚆</span>
-        <span>Loading Railway Audit Network...</span>
+      <div className="flex items-center gap-2.5">
+        <span className="animate-spin text-2xl">🚆</span>
+        <span className="font-medium text-slate-700">Connecting to Railway Audit Ledger...</span>
       </div>
     </div>
   );
 }
 
-/**
- * Stage 14: App Component with Global State, Analytics, and Error Boundary
- */
-function App() {
+function GlobalToastContainer() {
+  const activeToast = useUIStore((state) => state.activeToast);
+  const clearToast = useUIStore((state) => state.clearToast);
+
+  return <Toast toast={activeToast} onClose={clearToast} />;
+}
+
+export function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
+          <GlobalToastContainer />
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               {/* Public Routes */}
@@ -70,7 +77,7 @@ function App() {
                 <Route path="batches" element={<AdminBatchesPage />} />
               </Route>
 
-              {/* 404 Catch-All */}
+              {/* Custom 404 Catch-All */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

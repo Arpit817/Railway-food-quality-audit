@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   useComplaintsQuery,
   useMetadataQuery,
@@ -19,8 +19,11 @@ const PAGE_SIZE = 6;
  * - Deep linking to specific complaints
  */
 export function ComplaintsPage() {
+  useEffect(() => {
+    document.title = 'Complaints Ledger — RailFood Audit';
+  }, []);
+
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
 
   const [selectedComplaintId, setSelectedComplaintId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -114,9 +117,9 @@ export function ComplaintsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Complaints Ledger (Query Param Synced)</h2>
+          <h2 className="text-lg font-bold text-slate-800">Complaints Ledger</h2>
           <p className="text-xs text-slate-500">
-            Shareable URL filter state synced with React Router <code>useSearchParams</code>.
+            Shareable filter state synchronized with URL query parameters for fast auditing.
           </p>
         </div>
         <RenderCounter componentName="ComplaintsPage" />
@@ -164,7 +167,7 @@ export function ComplaintsPage() {
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 cursor-pointer"
+                className="min-h-[44px] px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 cursor-pointer font-medium"
               >
                 &larr; Prev
               </button>
@@ -173,7 +176,7 @@ export function ComplaintsPage() {
                 type="button"
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 cursor-pointer"
+                className="min-h-[44px] px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 cursor-pointer font-medium"
               >
                 Next &rarr;
               </button>

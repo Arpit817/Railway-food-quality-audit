@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Card, Button, Badge, StarRating } from './ui/index.js';
 import { RenderCounter } from './RenderCounter.jsx';
 import { inspectorActionSchema } from '../utils/validationSchemas.js';
+import { useUIStore } from '../store/uiStore.js';
 
 /**
  * ComplaintDetailPanel with Zod-validated Inspector Status Progression
- * Demonstrates:
- * - Validating inspector action remarks with Zod `inspectorActionSchema.safeParse`
- * - Enforcing min 15 characters of remarks for closure/penalties
- * - Displaying validation errors under the input
+ * Includes:
+ * - Clickable phone number
+ * - Zod validation for transition remarks
+ * - User-facing success and error toast notifications
  */
 export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
   complaint,
@@ -63,12 +64,24 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
     if (!validation.success) {
       const errorMsg = validation.error.flatten().fieldErrors.remarks?.[0] || 'Invalid transition remarks.';
       setZodError(errorMsg);
+      useUIStore.getState().showToast({
+        type: 'error',
+        title: 'Action Blocked',
+        message: errorMsg
+      });
       return;
     }
 
     setZodError('');
     onStatusChange(complaint.id, nextStatus, finalRemarks);
     setRemarks('');
+
+    useUIStore.getState().showToast({
+      type: 'success',
+      title: 'Status Updated',
+      message: `${referenceNo} marked as ${nextStatus.replace(/_/g, ' ')}.`,
+      meta: `Audit trail updated by Inspector`
+    });
   };
 
   return (
@@ -142,8 +155,14 @@ export const ComplaintDetailPanel = React.memo(function ComplaintDetailPanel({
               "{comment}"
             </p>
             {phone && (
-              <p className="text-[11px] text-slate-500 mt-2 border-t border-slate-200/60 pt-1.5">
-                📞 Contact for resolution: <strong>{phone}</strong>
+              <p className="text-[11px] text-slate-600 mt-2 border-t border-slate-200/60 pt-2 flex items-center gap-1.5">
+                <span>📞 Passenger Contact:</span>
+                <a
+                  href={`tel:${phone.replace(/\s+/g, '')}`}
+                  className="font-bold text-railway-700 hover:text-railway-900 hover:underline min-h-[32px] inline-flex items-center"
+                >
+                  {phone}
+                </a>
               </p>
             )}
           </div>

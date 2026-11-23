@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -18,6 +18,7 @@ import { useComplaintsQuery, useMetadataQuery } from '../api/index.js';
 import { evaluateKitchenSafetyAlerts } from '../utils/alertEngine.js';
 import { exportComplaintsToCSV } from '../utils/csvExporter.js';
 import { Card, Button, Badge } from '../components/ui/index.js';
+import { useUIStore } from '../store/uiStore.js';
 
 const SEVERITY_COLORS = {
   high: '#dc2626',
@@ -25,16 +26,18 @@ const SEVERITY_COLORS = {
   low: '#16a34a'
 };
 
-const PIE_COLORS = ['#0284c7', '#0ea5e9', '#38bdf8', '#7dd3fc', '#f59e0b', '#ef4444', '#10b981', '#64748b'];
-
 /**
  * QualityAnalyticsPage (/dashboard/analytics)
- * Demonstrates:
+ * Features:
  * - Recharts data visualizations (BarChart by category, PieChart by severity, Trend LineChart)
- * - Critical Kitchen Safety Alert detection (3+ hygiene complaints in 2 hours)
- * - CSV audit data export
+ * - Critical Kitchen Safety Alert detection
+ * - CSV audit data export with success toast feedback
  */
 export function QualityAnalyticsPage() {
+  useEffect(() => {
+    document.title = 'Quality Analytics & Safety Alerts — RailFood Audit';
+  }, []);
+
   const { data: complaints = [], isLoading } = useComplaintsQuery();
   const { kitchens = [] } = useMetadataQuery();
 
@@ -84,6 +87,25 @@ export function QualityAnalyticsPage() {
     }));
   }, [complaints]);
 
+  const handleExportCSV = () => {
+    try {
+      const filename = `railway-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+      exportComplaintsToCSV(complaints, filename);
+      useUIStore.getState().showToast({
+        type: 'success',
+        title: 'Audit CSV Exported',
+        message: `Successfully downloaded ${complaints.length} records into ${filename}`,
+        meta: `Exported at ${new Date().toLocaleTimeString()}`
+      });
+    } catch {
+      useUIStore.getState().showToast({
+        type: 'error',
+        title: 'Export Failed',
+        message: 'Could not generate audit CSV export file.'
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header with CSV Export */}
@@ -98,8 +120,8 @@ export function QualityAnalyticsPage() {
         <Button
           variant="primary"
           size="sm"
-          onClick={() => exportComplaintsToCSV(complaints, `railway-audit-${Date.now()}.csv`)}
-          className="font-bold flex items-center gap-1.5 self-start sm:self-auto"
+          onClick={handleExportCSV}
+          className="min-h-[44px] font-bold flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
         >
           <span>📥</span> Export Audit Data (CSV)
         </Button>
@@ -136,11 +158,11 @@ export function QualityAnalyticsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Bar Chart: Complaints by Category */}
-          <Card className="lg:col-span-7 p-5 border-slate-200">
+          <Card className="lg:col-span-7 p-5 border-slate-200 overflow-hidden">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">
               Complaints by Category (Bar Chart)
             </h3>
-            <div className="h-64">
+            <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -154,11 +176,11 @@ export function QualityAnalyticsPage() {
           </Card>
 
           {/* Pie Chart: Severity Breakdown */}
-          <Card className="lg:col-span-5 p-5 border-slate-200">
+          <Card className="lg:col-span-5 p-5 border-slate-200 overflow-hidden">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">
               Severity Distribution (Pie Chart)
             </h3>
-            <div className="h-64 flex items-center justify-center">
+            <div className="h-64 w-full flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -184,11 +206,11 @@ export function QualityAnalyticsPage() {
           </Card>
 
           {/* Line Chart: Grievances Over Time */}
-          <Card className="lg:col-span-12 p-5 border-slate-200">
+          <Card className="lg:col-span-12 p-5 border-slate-200 overflow-hidden">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4">
               Grievance Influx Trend Over Time (Line Chart)
             </h3>
-            <div className="h-56">
+            <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />

@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMetadataQuery } from '../api/index.js';
 import { Card, Button, FormField, TextInput } from '../components/ui/index.js';
 import { adminBatchSchema } from '../utils/validationSchemas.js';
 import { generateRandomToken } from '../utils/complaintUtils.js';
+import { useUIStore } from '../store/uiStore.js';
 
 /**
  * Admin Batches Page (/admin/batches)
  * Protected route accessible ONLY to users with role='admin'
  */
 export function AdminBatchesPage() {
-  const { kitchens, batches } = useMetadataQuery();
+  useEffect(() => {
+    document.title = 'Admin Batch Portal — RailFood Audit';
+  }, []);
+
+  const { kitchens } = useMetadataQuery();
 
   const [kitchenId, setKitchenId] = useState('kit-101');
   const [itemType, setItemType] = useState('Standard Veg Thali');
@@ -31,16 +36,41 @@ export function AdminBatchesPage() {
     });
 
     if (!validation.success) {
-      setFormError(validation.error.issues[0]?.message || 'Validation failed');
+      const msg = validation.error.issues[0]?.message || 'Validation failed';
+      setFormError(msg);
+      useUIStore.getState().showToast({
+        type: 'error',
+        title: 'Validation Error',
+        message: msg
+      });
       return;
     }
 
     // Generate bulk QR tokens
     const tokens = [];
-    for (let i = 0; i < Number(quantity); i++) {
+    const count = Number(quantity);
+    for (let i = 0; i < count; i++) {
       tokens.push(generateRandomToken(10));
     }
     setGeneratedTokens(tokens);
+
+    useUIStore.getState().showToast({
+      type: 'success',
+      title: 'Packaging Tokens Created',
+      message: `Generated ${tokens.length} verified packaging tokens for Train ${trainNumber}.`,
+      meta: `${itemType} • Ready for sticker sheet export`
+    });
+  };
+
+  const handleCopyToken = (tok) => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(tok);
+      useUIStore.getState().showToast({
+        type: 'info',
+        title: 'Token Copied',
+        message: `Token "${tok}" copied to clipboard.`
+      });
+    }
   };
 
   return (
@@ -57,7 +87,7 @@ export function AdminBatchesPage() {
           <h3 className="text-sm font-bold text-slate-800 mb-3">Create New Meal Batch</h3>
           <form onSubmit={handleGenerate} className="space-y-3.5">
             {formError && (
-              <p className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200 font-semibold">
+              <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 font-semibold">
                 {formError}
               </p>
             )}
@@ -66,7 +96,7 @@ export function AdminBatchesPage() {
               <select
                 value={kitchenId}
                 onChange={(e) => setKitchenId(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white"
+                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white min-h-[44px]"
               >
                 {kitchens.map((k) => (
                   <option key={k.id} value={k.id}>
@@ -81,6 +111,7 @@ export function AdminBatchesPage() {
                 value={itemType}
                 onChange={(e) => setItemType(e.target.value)}
                 placeholder="e.g. Standard Veg Thali"
+                className="min-h-[44px]"
               />
             </FormField>
 
@@ -90,6 +121,7 @@ export function AdminBatchesPage() {
                 value={trainNumber}
                 onChange={(e) => setTrainNumber(e.target.value)}
                 placeholder="e.g. 12424"
+                className="min-h-[44px]"
               />
             </FormField>
 
@@ -100,22 +132,28 @@ export function AdminBatchesPage() {
                 max={2000}
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
+                className="min-h-[44px]"
               />
             </FormField>
 
-            <Button type="submit" variant="primary" size="md" className="w-full font-bold">
+            <Button type="submit" variant="primary" size="md" className="w-full min-h-[44px] font-bold cursor-pointer">
               Generate Printable Token Sheet
             </Button>
           </form>
         </Card>
 
         <Card className="md:col-span-7 p-5 border-slate-200">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h3 className="text-sm font-bold text-slate-800">
               Generated Packaging Tokens ({generatedTokens.length})
             </h3>
             {generatedTokens.length > 0 && (
-              <Button size="sm" variant="outline" onClick={() => window.print()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.print()}
+                className="min-h-[36px] cursor-pointer"
+              >
                 🖨️ Print Sticker Sheet
               </Button>
             )}
@@ -128,10 +166,16 @@ export function AdminBatchesPage() {
           ) : (
             <div className="max-h-96 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2">
               {generatedTokens.map((tok, idx) => (
-                <div key={idx} className="p-2 border border-slate-200 rounded text-center bg-white shadow-2xs">
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleCopyToken(tok)}
+                  className="p-2 border border-slate-200 rounded text-center bg-white hover:bg-railway-50 hover:border-railway-300 transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-railway-500"
+                  title="Click to copy token"
+                >
                   <span className="font-mono text-xs font-bold text-railway-800 block">{tok}</span>
-                  <span className="text-[10px] text-slate-400">Train: {trainNumber}</span>
-                </div>
+                  <span className="text-[10px] text-slate-400 block">Train: {trainNumber} • Copy 📋</span>
+                </button>
               ))}
             </div>
           )}
