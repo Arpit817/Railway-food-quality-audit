@@ -1,19 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, Button, FormField, TextInput, TextArea, FileInput, StarRating, ErrorMessage } from './ui/index.js';
 import { useOnlineStatus, useToggle } from '../hooks/index.js';
 import { COMPLAINT_CATEGORIES, calculateSeverity, generateReferenceNumber } from '../utils/complaintUtils.js';
 import { feedbackSchema } from '../utils/validationSchemas.js';
-import { metadataApi } from '../api/index.js';
+import { useTokenResolutionQuery, useMetadataQuery, useCreateComplaintMutation } from '../api/index.js';
 
-export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedback, onBackToDashboard }) {
+export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashboard }) {
   const isOnline = useOnlineStatus();
   const [isAnonymous, toggleAnonymous] = useToggle(false);
 
-  // Token Resolution State (Loading / Error / Success)
   const [tokenInput, setTokenInput] = useState(initialToken);
-  const [packagingInfo, setPackagingInfo] = useState(null);
-  const [tokenLoading, setTokenLoading] = useState(false);
-  const [tokenError, setTokenError] = useState('');
+
+  // 1. REACT QUERY: Fetch and cache token verification
+  const {
+    data: qrResults,
+    isLoading: isTokenLoading,
+    isError: isTokenError
+  } = useTokenResolutionQuery(tokenInput);
+
+  // 2. REACT QUERY: Fetch and cache master metadata
+  const { vendors, kitchens, batches } = useMetadataQuery();
+
+  // 3. REACT QUERY: Mutation for submitting new complaint
+  const createComplaintMutation = useCreateComplaintMutation();
 
   // Form State
   const [rating, setRating] = useState(1);
@@ -26,8 +35,6 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
 
   const [fieldErrors, setFieldErrors] = useState({});
   const [submittedRef, setSubmittedRef] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
 
   const seatRef = React.useRef(null);
   const commentInputRef = React.useRef(null);
@@ -45,64 +52,16 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
 
   const derivedSeverity = calculateSeverity(category, rating);
 
-  // EFFECT: Resolve QR Token against REST API on mount or token change
-  useEffect(() => {
-    let isMounted = true;
+  // Derive packaging info from React Query cached metadata
+  const qrRecord = qrResults && qrResults.length > 0 ? qrResults[0] : null;
+  const isTokenInvalid = !isTokenLoading && (!qrResults || qrResults.length === 0);
 
-    async function resolveScannedToken() {
-      setTokenLoading(true);
-      setTokenError('');
-
-      try {
-        const qrResults = await metadataApi.resolveToken(tokenInput);
-        if (!isMounted) return;
-
-        if (!qrResults || qrResults.length === 0) {
-          setPackagingInfo(null);
-          setTokenError('Invalid or expired QR token. Unauthorized railway packaging.');
-          return;
-        }
-
-        const qrRecord = qrResults[0];
-
-        // Fetch linked batches, kitchens, and vendors
-        const [batches, kitchens, vendors] = await Promise.all([
-          metadataApi.getBatches(),
-          metadataApi.getKitchens(),
-          metadataApi.getVendors()
-        ]);
-
-        if (!isMounted) return;
-
-        const batch = batches.find((b) => b.id === qrRecord.batchId);
-        const kitchen = kitchens.find((k) => k.id === batch?.kitchenId);
-        const vendor = vendors.find((v) => v.id === kitchen?.vendorId);
-
-        setPackagingInfo({
-          token: qrRecord.token,
-          batch,
-          kitchen,
-          vendor
-        });
-      } catch (err) {
-        if (!isMounted) return;
-        setPackagingInfo(null);
-        setTokenError(err.message || 'Failed to verify packaging token with IRCTC server.');
-      } finally {
-        if (isMounted) setTokenLoading(false);
-      }
-    }
-
-    resolveScannedToken();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [tokenInput]);
+  const batch = qrRecord ? batches.find((b) => b.id === qrRecord.batchId) : null;
+  const kitchen = batch ? kitchens.find((k) => k.id === batch.kitchenId) : null;
+  const vendor = kitchen ? vendors.find((v) => v.id === kitchen.vendorId) : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitError('');
 
     const seatValue = seatRef.current?.value || 'Coach B2-19';
 
@@ -129,7 +88,6 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
     }
 
     setFieldErrors({});
-    setSubmitting(true);
 
     const refNo = generateReferenceNumber();
     const fullComment = category === 'foreign_object'
@@ -138,10 +96,10 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
 
     const newFeedback = {
       referenceNo: refNo,
-      token: packagingInfo?.token || tokenInput,
-      batchId: packagingInfo?.batch?.id || 'bat-901',
-      vendorId: packagingInfo?.vendor?.id || 'ven-001',
-      kitchenId: packagingInfo?.kitchen?.id || 'kit-101',
+      token: qrRecord?.token || tokenInput,
+      batchId: batch?.id || 'bat-901',
+      vendorId: vendor?.id || 'ven-001',
+      kitchenId: kitchen?.id || 'kit-101',
       rating,
       category,
       comment: fullComment,
@@ -164,12 +122,10 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
     };
 
     try {
-      await onSubmitFeedback(newFeedback);
+      await createComplaintMutation.mutateAsync(newFeedback);
       setSubmittedRef(refNo);
     } catch (err) {
-      setSubmitError(err.message || 'Failed to submit grievance to the audit server.');
-    } finally {
-      setSubmitting(false);
+      console.error('Submit error:', err);
     }
   };
 
@@ -206,45 +162,41 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
           </div>
         </div>
 
-        {/* Loading Packaging State */}
-        {tokenLoading && (
+        {isTokenLoading && (
           <div className="p-6 text-center text-xs text-slate-500">
             <span className="animate-spin inline-block mr-2">⏳</span>
-            Verifying packaging token with IRCTC registry...
+            Verifying packaging token via React Query cache...
           </div>
         )}
 
-        {/* Invalid or Expired Token State */}
-        {tokenError && !tokenLoading && (
+        {(isTokenInvalid || isTokenError) && !isTokenLoading && (
           <div className="p-5">
             <ErrorMessage
-              title="Packaging Verification Failed"
-              message={tokenError}
+              title="Invalid or Expired QR Token"
+              message="This token does not correspond to authorized railway food packaging."
               onRetry={() => setTokenInput('Xk9PqA72mZ')}
             />
           </div>
         )}
 
-        {/* Valid Verified Packaging Context */}
-        {packagingInfo && !tokenLoading && !tokenError && (
+        {qrRecord && !isTokenLoading && !isTokenInvalid && (
           <div className="bg-railway-50 px-4 py-3 border-b border-railway-100 text-xs space-y-1">
             <div className="flex justify-between text-slate-600">
-              <span>Train No:</span> <strong className="text-slate-900">{packagingInfo.batch?.trainNumber || '12424'}</strong>
+              <span>Train No:</span> <strong className="text-slate-900">{batch?.trainNumber || '12424'}</strong>
             </div>
             <div className="flex justify-between text-slate-600">
-              <span>Vendor:</span> <strong className="text-slate-900">{packagingInfo.vendor?.name || 'Express Caterers'}</strong>
+              <span>Vendor:</span> <strong className="text-slate-900">{vendor?.name || 'Express Caterers'}</strong>
             </div>
             <div className="flex justify-between text-slate-600">
-              <span>Kitchen:</span> <strong className="text-slate-900">{packagingInfo.kitchen?.location || 'New Delhi Base Kitchen'}</strong>
+              <span>Kitchen:</span> <strong className="text-slate-900">{kitchen?.location || 'New Delhi Base Kitchen'}</strong>
             </div>
             <div className="flex justify-between text-slate-600">
-              <span>Meal Item:</span> <strong className="text-slate-900">{packagingInfo.batch?.itemType || 'Standard Thali'}</strong>
+              <span>Meal Item:</span> <strong className="text-slate-900">{batch?.itemType || 'Standard Thali'}</strong>
             </div>
           </div>
         )}
 
-        {/* Form Body */}
-        {packagingInfo && !tokenLoading && !tokenError && (
+        {qrRecord && !isTokenLoading && !isTokenInvalid && (
           <div className="p-4 space-y-4">
             {submittedRef ? (
               <div className="text-center py-6 space-y-3">
@@ -253,7 +205,7 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
                 </div>
                 <h3 className="text-base font-bold text-slate-800">Complaint Registered!</h3>
                 <p className="text-xs text-slate-600 max-w-xs mx-auto">
-                  Logged in REST database with <strong>{derivedSeverity.toUpperCase()}</strong> severity. Safety inspectors for Northern Zone have been alerted.
+                  Synchronized into server cache with <strong>{derivedSeverity.toUpperCase()}</strong> severity. Safety inspectors for Northern Zone have been alerted.
                 </p>
                 <div className="bg-slate-100 p-3 rounded-lg text-xs font-mono font-bold text-slate-800 border border-slate-200">
                   Tracking Ref: {submittedRef}
@@ -264,8 +216,11 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                {submitError && (
-                  <ErrorMessage title="Submission Error" message={submitError} />
+                {createComplaintMutation.isError && (
+                  <ErrorMessage
+                    title="Submission Error"
+                    message={createComplaintMutation.error?.message || 'Failed to submit grievance.'}
+                  />
                 )}
 
                 <FormField label="Meal Quality Rating" required error={fieldErrors.rating}>
@@ -359,8 +314,15 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onSubmitFeedb
                   )}
                 </div>
 
-                <Button type="submit" variant="primary" size="md" disabled={submitting} loading={submitting} className="w-full h-11 text-sm font-semibold">
-                  {submitting ? 'Submitting to REST API...' : 'Submit Validated Grievance'}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={createComplaintMutation.isPending}
+                  loading={createComplaintMutation.isPending}
+                  className="w-full h-11 text-sm font-semibold"
+                >
+                  {createComplaintMutation.isPending ? 'Submitting to React Query...' : 'Submit Validated Grievance'}
                 </Button>
               </form>
             )}

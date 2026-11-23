@@ -1,2 +1,8 @@
-// src/pages: Top-level route pages (LandingPage, DashboardPage, AdminPage, TrackPage)
-export const PAGES_MODULE = 'pages';
+export { DashboardLayout } from './DashboardLayout.jsx';
+export { ComplaintsPage } from './ComplaintsPage.jsx';
+export { VendorsPage } from './VendorsPage.jsx';
+export { AdminBatchesPage } from './AdminBatchesPage.jsx';
+export { QRLandingPage } from './QRLandingPage.jsx';
+export { TrackPage } from './TrackPage.jsx';
+export { LoginPage } from './LoginPage.jsx';
+export { NotFoundPage } from './NotFoundPage.jsx';
