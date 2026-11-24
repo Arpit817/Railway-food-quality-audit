@@ -100,6 +100,26 @@ export function DashboardLayout() {
             </NavLink>
           ))}
 
+          <div className="text-[11px] font-semibold tracking-wider text-railway-400 uppercase px-2 pt-2 border-t border-railway-800">
+            Public Passenger Portals
+          </div>
+          <Link
+            to="/f/Xk9PqA72mZ"
+            onClick={() => setMobileMenuOpen(false)}
+            className="w-full min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-emerald-400 hover:bg-railway-800"
+          >
+            <span>📱</span>
+            <span>Passenger QR Portal (Module A)</span>
+          </Link>
+          <Link
+            to="/track"
+            onClick={() => setMobileMenuOpen(false)}
+            className="w-full min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-railway-200 hover:bg-railway-800"
+          >
+            <span>🔎</span>
+            <span>Track Grievance</span>
+          </Link>
+
           <div className="pt-3 border-t border-railway-800 text-xs">
             <div className="flex items-center justify-between py-1">
               <span className="text-railway-400">User:</span>
@@ -159,6 +179,26 @@ export function DashboardLayout() {
               <span>{link.label}</span>
             </NavLink>
           ))}
+
+          <div className="text-[11px] font-semibold tracking-wider text-railway-400 uppercase px-3 pt-3 pb-1 border-t border-railway-800/80 mt-2">
+            Public Passenger Portals
+          </div>
+          <Link
+            to="/f/Xk9PqA72mZ"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-railway-800 hover:text-emerald-300 transition-all"
+            title="Open Passenger Mobile Web App (Module A)"
+          >
+            <span className="text-sm">📱</span>
+            <span>Passenger QR Portal</span>
+          </Link>
+          <Link
+            to="/track"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-railway-200 hover:bg-railway-800 hover:text-white transition-all"
+            title="Public Grievance Tracker"
+          >
+            <span className="text-sm">🔎</span>
+            <span>Track Grievance</span>
+          </Link>
         </nav>
 
         {/* User Card & Logout */}
@@ -180,8 +220,18 @@ export function DashboardLayout() {
       {/* Main Content Pane with Nested Outlet */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between flex-wrap gap-2">
-          <div className="text-xs text-slate-500">
-            Platform Environment: <strong className="text-slate-800 font-mono">React 19 / Fast Refresh</strong>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/f/Xk9PqA72mZ"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+              title="Launch Passenger Mobile QR Simulation (Module A)"
+            >
+              <span>📱</span>
+              <span>Passenger QR View (Module A)</span>
+            </Link>
+            <div className="hidden sm:block text-xs text-slate-500">
+              Environment: <strong className="text-slate-800 font-mono">React 19 / Fast Refresh</strong>
+            </div>
           </div>
           <AuditClock />
         </header>
