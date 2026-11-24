@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useMetadataQuery } from '../api/index.js';
 import { Card, Button, FormField, TextInput } from '../components/ui/index.js';
 import { adminBatchSchema } from '../utils/validationSchemas.js';
@@ -164,17 +165,25 @@ export function AdminBatchesPage() {
               Fill the batch parameters on the left and click generate to produce authorized packaging tokens.
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="max-h-96 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3 print:grid-cols-3 print:max-h-none">
               {generatedTokens.map((tok, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => handleCopyToken(tok)}
-                  className="p-2 border border-slate-200 rounded text-center bg-white hover:bg-railway-50 hover:border-railway-300 transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-railway-500"
+                  className="p-3 border border-slate-200 rounded-lg text-center bg-white hover:bg-railway-50 hover:border-railway-300 transition-colors cursor-pointer text-left focus:outline-none focus:ring-1 focus:ring-railway-500 shadow-xs flex flex-col items-center gap-2"
                   title="Click to copy token"
                 >
-                  <span className="font-mono text-xs font-bold text-railway-800 block">{tok}</span>
-                  <span className="text-[10px] text-slate-400 block">Train: {trainNumber} • Copy 📋</span>
+                  <QRCodeSVG
+                    value={typeof window !== 'undefined' ? `${window.location.origin}/f/${tok}` : `/f/${tok}`}
+                    size={64}
+                    level="M"
+                    className="p-1 bg-white rounded border border-slate-100"
+                  />
+                  <div className="text-center w-full">
+                    <span className="font-mono text-xs font-bold text-railway-800 block truncate">{tok}</span>
+                    <span className="text-[10px] text-slate-500 block">Train {trainNumber}</span>
+                  </div>
                 </button>
               ))}
             </div>
