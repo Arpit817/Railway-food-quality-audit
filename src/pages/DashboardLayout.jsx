@@ -109,7 +109,7 @@ export function DashboardLayout() {
             className="w-full min-h-[44px] flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold text-emerald-400 hover:bg-railway-800"
           >
             <span>📱</span>
-            <span>Passenger QR Portal (Module A)</span>
+            <span>Passenger QR Portal</span>
           </Link>
           <Link
             to="/track"
@@ -186,7 +186,7 @@ export function DashboardLayout() {
           <Link
             to="/f/Xk9PqA72mZ"
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-railway-800 hover:text-emerald-300 transition-all"
-            title="Open Passenger Mobile Web App (Module A)"
+            title="Open Passenger Mobile Web Portal"
           >
             <span className="text-sm">📱</span>
             <span>Passenger QR Portal</span>
@@ -224,10 +224,10 @@ export function DashboardLayout() {
             <Link
               to="/f/Xk9PqA72mZ"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-              title="Launch Passenger Mobile QR Simulation (Module A)"
+              title="Passenger Meal Packaging Feedback Portal"
             >
               <span>📱</span>
-              <span>Passenger QR View (Module A)</span>
+              <span>Passenger QR Portal</span>
             </Link>
             <div className="hidden sm:block text-xs text-slate-500">
               Environment: <strong className="text-slate-800 font-mono">React 19 / Fast Refresh</strong>

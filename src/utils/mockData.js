@@ -707,3 +707,27 @@ export const COMPLAINTS = [
   }
 ];
 
+export const QR_CODES = [
+  { token: 'Xk9PqA72mZ', batchId: 'bat-901', status: 'active', scanCount: 1 },
+  { token: 'Lm7RzW91pQ', batchId: 'bat-901', status: 'active', scanCount: 0 },
+  { token: 'Jn4TxY63sV', batchId: 'bat-901', status: 'active', scanCount: 1 },
+  { token: 'Wp3LkE88bA', batchId: 'bat-902', status: 'active', scanCount: 0 },
+  { token: 'Kr8NqZ24wM', batchId: 'bat-902', status: 'active', scanCount: 1 },
+  { token: 'Zt9VsP51cD', batchId: 'bat-903', status: 'active', scanCount: 0 },
+  { token: 'Yv6BmQ77rE', batchId: 'bat-903', status: 'active', scanCount: 1 },
+  { token: 'Px2LjR39kL', batchId: 'bat-903', status: 'active', scanCount: 0 },
+  { token: 'Nt5DsF41hS', batchId: 'bat-904', status: 'active', scanCount: 1 },
+  { token: 'Mw8KxZ62qA', batchId: 'bat-904', status: 'active', scanCount: 0 },
+  { token: 'Bq1VcF83jP', batchId: 'bat-904', status: 'active', scanCount: 0 },
+  { token: 'Qr9TpL34sK', batchId: 'bat-905', status: 'active', scanCount: 1 },
+  { token: 'Lx4KmA91vZ', batchId: 'bat-905', status: 'active', scanCount: 0 },
+  { token: 'Vy7NsQ18mR', batchId: 'bat-905', status: 'active', scanCount: 0 },
+  { token: 'Wz3BpR59tX', batchId: 'bat-906', status: 'active', scanCount: 1 },
+  { token: 'Kd2LmP48nB', batchId: 'bat-906', status: 'active', scanCount: 0 },
+  { token: 'Ts8RvW14kL', batchId: 'bat-906', status: 'active', scanCount: 0 },
+  { token: 'Qn6FzM27bK', batchId: 'bat-906', status: 'active', scanCount: 1 },
+  { token: 'Mb4VxQ73nE', batchId: 'bat-901', status: 'active', scanCount: 0 },
+  { token: 'Gh9RtL81zV', batchId: 'bat-902', status: 'active', scanCount: 1 }
+];
+
+

@@ -6,7 +6,7 @@ import axios from 'axios';
  * - Request / Response interceptors for logging and error transformation
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001',
+  baseURL: (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_API_BASE_URL) || 'http://localhost:3001',
   headers: {
     'Content-Type': 'application/json'
   },

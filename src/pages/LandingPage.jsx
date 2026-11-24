@@ -140,8 +140,8 @@ export function LandingPage() {
               </form>
 
               <div className="pt-2">
-                <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">
-                  Try Sample Reference Numbers:
+                <span className="text-[11px] font-semibold text-slate-500 block mb-1.5">
+                  Recent Grievance Inquiries:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {quickRefs.map((ref) => (
@@ -159,12 +159,12 @@ export function LandingPage() {
             </div>
 
             <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-500 mt-4 flex items-center justify-between">
-              <span>Includes Amazon-style milestone progression</span>
-              <span className="text-emerald-700 font-semibold">✓ Live Updates</span>
+              <span>Full milestone resolution tracker</span>
+              <span className="text-emerald-700 font-semibold">✓ Live System Updates</span>
             </div>
           </Card>
 
-          {/* Card 2: Passenger Packaging QR Scanner Simulation */}
+          {/* Card 2: Passenger Packaging QR Scanner */}
           <Card className="lg:col-span-7 p-6 border-slate-200 shadow-md flex flex-col justify-between bg-white">
             <div className="space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -173,17 +173,14 @@ export function LandingPage() {
                     📱
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">Passenger Packaging QR Portal</h2>
-                    <p className="text-xs text-slate-500">Scan meal sticker in train • Zero app install • Zero login</p>
+                    <h2 className="text-base font-bold text-slate-900">Meal Packaging QR Scanner Portal</h2>
+                    <p className="text-xs text-slate-500">Scan meal sticker in train • Zero app install • Zero login required</p>
                   </div>
                 </div>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  Module A
-                </span>
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed">
-                In real train operations, passengers point their phone camera or Google Lens at the meal container QR code. Select any authorized batch token below to test the live passenger grievance workflow:
+                Passengers scan the tamper-evident QR seal on their meal container using Google Lens or phone camera. Select your train meal batch below to initiate instant quality feedback:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
@@ -198,13 +195,13 @@ export function LandingPage() {
                         <span className="font-mono text-xs font-bold text-railway-900 group-hover:text-railway-700">
                           {item.token}
                         </span>
-                        <span className="text-[10px] font-semibold text-slate-400">{item.badge}</span>
+                        <span className="text-[10px] font-semibold text-slate-500">{item.badge}</span>
                       </div>
                       <strong className="text-xs text-slate-800 block truncate">{item.meal}</strong>
                       <span className="text-[11px] text-slate-500 block truncate mt-0.5">{item.train}</span>
                     </div>
                     <span className="text-[11px] font-bold text-railway-700 mt-2 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                      Scan Token &rarr;
+                      Scan Packaging QR &rarr;
                     </span>
                   </Link>
                 ))}

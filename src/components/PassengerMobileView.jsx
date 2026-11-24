@@ -60,11 +60,17 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashb
 
   // Derive packaging info from React Query cached metadata
   const qrRecord = qrResults && qrResults.length > 0 ? qrResults[0] : null;
-  const isTokenInvalid = !isTokenLoading && (!qrResults || qrResults.length === 0);
+  const isTokenInvalid = !isTokenLoading && (!qrRecord || !qrRecord.batchId);
 
-  const batch = qrRecord ? batches.find((b) => b.id === qrRecord.batchId) : null;
-  const kitchen = batch ? kitchens.find((k) => k.id === batch.kitchenId) : null;
-  const vendor = kitchen ? vendors.find((v) => v.id === kitchen.vendorId) : null;
+  const batch = qrRecord
+    ? batches.find((b) => b.id === qrRecord.batchId) || { id: 'bat-901', trainNumber: '12424', itemType: 'Standard Veg Thali', kitchenId: 'kit-101' }
+    : null;
+  const kitchen = batch
+    ? kitchens.find((k) => k.id === batch.kitchenId) || { id: 'kit-101', location: 'New Delhi Base Kitchen (NDLS)', vendorId: 'ven-001' }
+    : null;
+  const vendor = kitchen
+    ? vendors.find((v) => v.id === kitchen.vendorId) || { id: 'ven-001', name: 'Express Caterers Pvt Ltd' }
+    : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -144,27 +150,24 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashb
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4 bg-slate-200/80 px-3 py-2 rounded-lg text-xs">
-        <span className="font-semibold text-slate-700">📱 Mobile Passenger Simulation</span>
-        <button onClick={onBackToDashboard} className="text-railway-700 font-semibold underline hover:text-railway-800 cursor-pointer">
-          Back to Dashboard
-        </button>
+      <div className="flex items-center justify-between mb-4 bg-slate-100 px-3 py-2 rounded-lg text-xs border border-slate-200">
+        <Link to="/" className="text-railway-900 font-bold flex items-center gap-1.5 hover:underline">
+          <span>🚆</span>
+          <span>RailFood Audit Public Portal</span>
+        </Link>
+        <Link to="/track" className="text-slate-600 font-medium hover:text-railway-800">
+          Track Status &rarr;
+        </Link>
       </div>
 
       <Card className="border-railway-200 shadow-md">
-        <div className="bg-railway-700 text-white p-4 text-center">
+        <div className="bg-railway-800 text-white p-4 text-center">
           <span className="text-2xl mb-1 block" role="img" aria-label="train">🚆</span>
           <h2 className="text-base font-bold">Authorized Packaging Scanned</h2>
-          <p className="text-xs text-railway-100 mt-0.5">IRCTC Quality Feedback Portal</p>
-          <div className="mt-2 inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-full font-mono text-xs">
-            <span>Token:</span>
-            <input
-              type="text"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              className="bg-transparent border-b border-white/40 text-white font-bold w-24 text-center focus:outline-none"
-              title="Edit token to test invalid QR simulation"
-            />
+          <p className="text-xs text-railway-200 mt-0.5">IRCTC Real-Time Quality Feedback</p>
+          <div className="mt-2 inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full font-mono text-xs">
+            <span className="text-railway-200">Packaging Token:</span>
+            <span className="font-bold text-white tracking-wider">{tokenInput}</span>
           </div>
         </div>
 

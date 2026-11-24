@@ -1,52 +1,136 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 /**
- * Mock Users Dataset representing role-based authorization in Indian Railways
+ * Initial Staff Accounts for Indian Railways Food Quality & Safety Administration
  */
-export const MOCK_USERS = [
+export const INITIAL_STAFF_ACCOUNTS = [
   {
     id: 'user-insp-01',
     name: 'Inspector Ramesh Sharma',
     email: 'inspector.nr@railfood.gov.in',
-    role: 'inspector', // 'passenger' | 'inspector' | 'admin'
-    zone: 'Northern',
-    token: 'mock-jwt-inspector-token'
+    password: 'Railway@2026',
+    role: 'inspector',
+    zone: 'Northern Zone',
+    badgeId: 'NR-FSO-884'
   },
   {
     id: 'user-admin-01',
     name: 'Director Neha Gupta',
     email: 'admin.safety@railfood.gov.in',
+    password: 'AdminHQ@2026',
     role: 'admin',
-    zone: 'All India',
-    token: 'mock-jwt-admin-token'
+    zone: 'All India HQ',
+    badgeId: 'HQ-DIR-019'
   }
 ];
+
+export const MOCK_USERS = INITIAL_STAFF_ACCOUNTS;
+
+const ACCOUNTS_STORAGE_KEY = 'railfood_staff_accounts_registry';
+const CURRENT_USER_KEY = 'railfood_auth_current_user';
+
+function getStoredStaffAccounts() {
+  try {
+    const saved = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+    if (!saved) {
+      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(INITIAL_STAFF_ACCOUNTS));
+      return INITIAL_STAFF_ACCOUNTS;
+    }
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_STAFF_ACCOUNTS;
+  } catch {
+    return INITIAL_STAFF_ACCOUNTS;
+  }
+}
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  // Initialize from localStorage or default to logged-in inspector for university demo convenience
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('railfood_auth_user');
-      return saved ? JSON.parse(saved) : MOCK_USERS[0];
-    } catch (e) {
-      return MOCK_USERS[0];
+      const saved = localStorage.getItem(CURRENT_USER_KEY);
+      return saved ? JSON.parse(saved) : INITIAL_STAFF_ACCOUNTS[0];
+    } catch {
+      return INITIAL_STAFF_ACCOUNTS[0];
     }
   });
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('railfood_auth_user', JSON.stringify(currentUser));
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem('railfood_auth_user');
+      localStorage.removeItem(CURRENT_USER_KEY);
     }
   }, [currentUser]);
 
+  const loginWithCredentials = (email, password) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+
+    const accounts = getStoredStaffAccounts();
+    const found = accounts.find(
+      (acc) => acc.email.toLowerCase() === cleanEmail && acc.password === cleanPass
+    );
+
+    if (found) {
+      const userPayload = { ...found };
+      delete userPayload.password;
+      setCurrentUser(userPayload);
+      return { success: true, user: userPayload };
+    }
+
+    return {
+      success: false,
+      error: 'Invalid Railway Email or Security Password. Please check your credentials.'
+    };
+  };
+
+  const registerStaff = ({ name, email, password, role = 'inspector', zone = 'Northern Zone', badgeId }) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanName = (name || '').trim();
+    const cleanPass = (password || '').trim();
+
+    if (!cleanName || !cleanEmail || !cleanPass) {
+      return { success: false, error: 'All fields are mandatory.' };
+    }
+
+    const accounts = getStoredStaffAccounts();
+    const exists = accounts.some((acc) => acc.email.toLowerCase() === cleanEmail);
+
+    if (exists) {
+      return { success: false, error: 'A staff account with this Railway email already exists.' };
+    }
+
+    const newStaff = {
+      id: `user-${role}-${Date.now()}`,
+      name: cleanName,
+      email: cleanEmail,
+      password: cleanPass,
+      role,
+      zone: zone || 'Northern Zone',
+      badgeId: badgeId || `RAIL-${Math.floor(1000 + Math.random() * 9000)}`
+    };
+
+    const updated = [...accounts, newStaff];
+    try {
+      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
+
+    const userPayload = { ...newStaff };
+    delete userPayload.password;
+    setCurrentUser(userPayload);
+    return { success: true, user: userPayload };
+  };
+
   const login = (role = 'inspector') => {
-    const user = MOCK_USERS.find((u) => u.role === role) || MOCK_USERS[0];
-    setCurrentUser(user);
-    return user;
+    const accounts = getStoredStaffAccounts();
+    const user = accounts.find((u) => u.role === role) || accounts[0];
+    const userPayload = { ...user };
+    delete userPayload.password;
+    setCurrentUser(userPayload);
+    return userPayload;
   };
 
   const logout = () => {
@@ -59,6 +143,8 @@ export function AuthProvider({ children }) {
         currentUser,
         isAuthenticated: Boolean(currentUser),
         role: currentUser?.role || 'passenger',
+        loginWithCredentials,
+        registerStaff,
         login,
         logout
       }}
@@ -75,3 +161,5 @@ export function useAuth() {
   }
   return context;
 }
+
+export default AuthContext;
