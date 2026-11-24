@@ -6,6 +6,7 @@ import { Toast } from './components/ui/Toast.jsx';
 import { useUIStore } from './store/uiStore.js';
 
 // Lazy loaded page components
+const LandingPage = lazy(() => import('./pages/LandingPage.jsx'));
 const DashboardLayout = lazy(() => import('./pages/DashboardLayout.jsx'));
 const ComplaintsPage = lazy(() => import('./pages/ComplaintsPage.jsx'));
 const VendorsPage = lazy(() => import('./pages/VendorsPage.jsx'));
@@ -43,7 +44,7 @@ export function App() {
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               {/* Public Routes */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/f/:token" element={<QRLandingPage />} />
               <Route path="/track" element={<TrackPage />} />
               <Route path="/track/:referenceNo" element={<TrackPage />} />
