@@ -247,27 +247,18 @@ export function PassengerMobileView({ initialToken = '', onBackToDashboard }) {
       )}
 
       <div className="flex items-center justify-between mb-4 bg-slate-100 px-3 py-2 rounded-xl text-xs border border-slate-200 gap-2">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
               if (window.history.length > 1) window.history.back();
               else window.location.href = '/';
             }}
-            className="px-2 py-1 rounded bg-white hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
+            className="px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 text-slate-700 font-medium border border-slate-300 cursor-pointer flex items-center gap-1 shadow-2xs text-xs"
             title="Go Back"
           >
             <span>←</span>
             <span>Back</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => window.history.forward()}
-            className="px-2 py-1 rounded bg-white hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
-            title="Go Forward"
-          >
-            <span>Forward</span>
-            <span>→</span>
           </button>
         </div>
         <div className="flex items-center gap-3">

@@ -214,7 +214,7 @@ export function DashboardLayout() {
               type="button"
               onClick={() => {
                 if (window.history.length > 1) navigate(-1);
-                else navigate('/');
+                else navigate('/dashboard');
               }}
               className="px-2.5 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
               title="Go Back"
@@ -222,16 +222,7 @@ export function DashboardLayout() {
               <span>←</span>
               <span>Back</span>
             </button>
-            <button
-              type="button"
-              onClick={() => navigate(1)}
-              className="px-2.5 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
-              title="Go Forward"
-            >
-              <span>Forward</span>
-              <span>→</span>
-            </button>
-            <span className="text-xs font-bold text-slate-800 px-2 py-1 bg-slate-100 rounded border border-slate-200 flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-800 px-2.5 py-1 bg-slate-100 rounded border border-slate-200 flex items-center gap-1.5">
               <span>🛡️</span>
               <span className="hidden sm:inline">Food Safety & Inspection Workspace</span>
             </span>
@@ -241,12 +232,12 @@ export function DashboardLayout() {
               className={`px-2.5 py-1 text-xs rounded font-medium border flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isCloudConnected
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                  : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                  : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
               }`}
-              title="Click to view or configure Supabase Cloud Sync"
+              title="Click to view Central Audit Network synchronization status"
             >
-              <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-              <span className="font-semibold">{isCloudConnected ? 'Supabase Live Sync' : 'Local Mode (Connect Cloud)'}</span>
+              <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+              <span className="font-semibold">{isCloudConnected ? 'Central Ledger: Live Sync' : 'Ledger: Standalone Mode'}</span>
             </button>
           </div>
           <AuditClock />
@@ -443,9 +434,9 @@ export function DashboardLayout() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <span className="text-xl">☁️</span>
+                <span className="text-xl">🌐</span>
                 <h3 className="text-base font-bold text-slate-900">
-                  Supabase Cloud Real-Time Sync
+                  Central Audit Ledger Synchronization
                 </h3>
               </div>
               <button
@@ -459,22 +450,24 @@ export function DashboardLayout() {
 
             <div className="text-xs text-slate-600 space-y-3">
               <div className={`p-3 rounded-lg border flex items-center justify-between ${
-                isCloudConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800'
+                isCloudConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-300 text-slate-800'
               }`}>
                 <div>
-                  <span className="font-bold block">Status: {isCloudConnected ? 'Connected & Live Synchronized' : 'Local Storage Mode'}</span>
-                  <span className="text-[11px]">
+                  <span className="font-bold block">
+                    Network Status: {isCloudConnected ? 'Central Audit Network Connected (Real-Time)' : 'Standalone Local Mode'}
+                  </span>
+                  <span className="text-[11px] text-slate-600">
                     {isCloudConnected
-                      ? 'Passenger submissions from phones instantly reflect on this dashboard in real-time via WebSockets.'
-                      : 'Complaints are currently stored only in this browser. Connect Supabase to sync between phone and PC.'}
+                      ? 'Live WebSocket sync is active. Passenger submissions from mobile devices reflect across all inspector terminals instantly.'
+                      : 'Audit records are currently stored locally in this browser. Connect the central cloud database to enable multi-device sync.'}
                   </span>
                 </div>
-                <span className={`w-3 h-3 rounded-full flex-shrink-0 ${isCloudConnected ? 'bg-emerald-500 animate-ping' : 'bg-amber-400'}`} />
+                <span className={`w-3 h-3 rounded-full flex-shrink-0 ${isCloudConnected ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
               </div>
 
               <div className="space-y-2">
                 <label className="block font-semibold text-slate-800 text-[11px]">
-                  Supabase Project URL:
+                  Central Database Endpoint URL:
                 </label>
                 <input
                   type="text"
@@ -487,11 +480,11 @@ export function DashboardLayout() {
 
               <div className="space-y-2">
                 <label className="block font-semibold text-slate-800 text-[11px]">
-                  Supabase Anon Public API Key:
+                  Public Access API Key:
                 </label>
                 <input
                   type="password"
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  placeholder="Public API anon key..."
                   value={keyInput}
                   onChange={(e) => setKeyInput(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-railway-800 focus:outline-none"
@@ -499,7 +492,7 @@ export function DashboardLayout() {
               </div>
 
               <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded border border-slate-200">
-                💡 <strong>Tip:</strong> You can also set these in your <code>.env</code> file or Vercel Environment Variables as <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>. Schema SQL is available at <code>supabase_schema.sql</code>.
+                💡 <strong>Production Note:</strong> Configured securely via environment variables (<code>VITE_SUPABASE_URL</code>, <code>VITE_SUPABASE_ANON_KEY</code>) or updated dynamically above.
               </p>
             </div>
 

@@ -49,10 +49,19 @@ export function App() {
               <Route path="/f/:token" element={<QRLandingPage />} />
               <Route path="/scan" element={<QRLandingPage />} />
               <Route path="/scan/:token" element={<QRLandingPage />} />
-              <Route path="/vendor" element={<VendorPortalPage />} />
               <Route path="/track" element={<TrackPage />} />
               <Route path="/track/:referenceNo" element={<TrackPage />} />
               <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected Catering Vendor & Base Kitchen Portal */}
+              <Route
+                path="/vendor"
+                element={
+                  <ProtectedRoute allowedRoles={['vendor', 'admin']}>
+                    <VendorPortalPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Protected Staff Dashboard */}
               <Route

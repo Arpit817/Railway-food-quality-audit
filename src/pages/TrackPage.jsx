@@ -111,26 +111,20 @@ export function TrackPage() {
                 if (window.history.length > 1) navigate(-1);
                 else navigate('/');
               }}
-              className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
+              className="min-h-[36px] px-3 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-medium transition-colors flex items-center gap-1.5 cursor-pointer border border-railway-700"
               title="Go Back"
             >
               <span>←</span>
-              <span className="hidden sm:inline">Back</span>
+              <span>Back</span>
             </button>
-            <button
-              type="button"
-              onClick={() => navigate(1)}
-              className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
-              title="Go Forward"
-            >
-              <span className="hidden sm:inline">Forward</span>
-              <span>→</span>
-            </button>
-            <Link to="/" className="text-railway-200 hover:text-white px-2 py-1">
+            <Link to="/" className="text-railway-300 hover:text-white px-2 py-1 font-medium">
               Home
             </Link>
-            <Link to="/login" className="px-2.5 py-1.5 rounded bg-railway-700 text-white font-semibold hover:bg-railway-600">
-              Staff Login
+            <Link
+              to="/login"
+              className="px-3 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-medium border border-railway-700 transition-colors"
+            >
+              Staff Portal
             </Link>
           </div>
         </div>

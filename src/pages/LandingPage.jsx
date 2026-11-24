@@ -11,6 +11,7 @@ import { useUIStore } from '../store/uiStore.js';
  */
 export function LandingPage() {
   const navigate = useNavigate();
+  const { kitchens = [] } = useMetadataQuery();
   const [referenceNo, setReferenceNo] = useState('');
   const [packagingToken, setPackagingToken] = useState('');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -127,10 +128,30 @@ export function LandingPage() {
     }
   };
 
-  const handleBack = () => {
-    if (window.history.length > 1) navigate(-1);
-    else navigate('/');
-  };
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const faqs = [
+    {
+      q: 'Where do I find the QR code on my railway meal packet?',
+      a: 'Every authorized IRCTC meal container carries a tamper-evident QA seal sticker on the lid. It displays a QR code along with a 10-character alphanumeric security token.'
+    },
+    {
+      q: 'Do I need an IRCTC account or app to file a complaint?',
+      a: 'No login, mobile app, or account is required. When you scan the packaging QR code, this form opens directly in your phone browser with train number, catering licensee, and cooking kitchen automatically prefilled.'
+    },
+    {
+      q: 'How fast are food grievances addressed on running trains?',
+      a: 'High-severity safety alerts (such as foreign objects or spoiled meals) trigger immediate automated notifications to the On-Board Pantry Manager and the Zonal Food Safety Squad at the upcoming major junction.'
+    },
+    {
+      q: 'Can I upload photographs of spoiled food or unhygienic packaging?',
+      a: 'Yes. The grievance form allows direct photographic evidence uploads (up to 3 photos) from your phone camera or gallery as statutory evidence for the audit ledger.'
+    },
+    {
+      q: 'How can I track the status and action taken on my grievance?',
+      a: 'Upon submission, a unique 16-character Reference ID (e.g. RAIL-2026-K7M91A) is issued. You can enter this code in the Grievance Tracker on this page to view step-by-step resolution milestones.'
+    }
+  ];
 
   const quickRefs = ['RAIL-2026-K7M91A', 'RAIL-2026-B2V48N', 'RAIL-2026-Y8T31C'];
 
@@ -138,7 +159,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between font-sans text-slate-900 antialiased overflow-x-hidden">
       {/* Top National Header Bar */}
       <header className="bg-railway-900 text-white sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3 group focus:outline-none">
             <div className="w-10 h-10 rounded-xl bg-railway-700 flex items-center justify-center text-2xl shadow-inner group-hover:scale-105 transition-transform">
               🚆
@@ -156,45 +177,28 @@ export function LandingPage() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-2 sm:gap-3 text-xs">
-            {/* Back & Forward Navigation */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleBack}
-                className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
-                title="Go Back"
-              >
-                <span>←</span>
-                <span className="hidden sm:inline">Back</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(1)}
-                className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
-                title="Go Forward"
-              >
-                <span className="hidden sm:inline">Forward</span>
-                <span>→</span>
-              </button>
-            </div>
-
+          {/* Unified, Professional Navigation */}
+          <nav className="flex items-center gap-2 sm:gap-4 text-xs font-medium" aria-label="Main Navigation">
+            <Link
+              to="/track"
+              className="text-railway-200 hover:text-white px-2.5 py-1.5 rounded-lg transition-colors hidden sm:inline-block"
+            >
+              Grievance Tracker
+            </Link>
             <Link
               to="/vendor"
-              className="min-h-[36px] px-3 py-1.5 rounded-lg bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 font-bold border border-emerald-600/50 transition-colors flex items-center gap-1.5"
+              className="text-railway-200 hover:text-white px-2.5 py-1.5 rounded-lg transition-colors"
             >
-              <span>🍱</span>
-              <span className="hidden sm:inline">Vendor Portal</span>
+              Catering Partners
             </Link>
-
             <Link
               to="/login"
-              className="min-h-[36px] px-3.5 py-1.5 rounded-lg bg-railway-700 hover:bg-railway-600 border border-railway-600 text-white font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="min-h-[36px] px-3.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 border border-railway-600/70 text-white font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
               <span>🛡️</span>
-              <span>Staff Login</span>
+              <span>Official Login</span>
             </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -413,6 +417,57 @@ export function LandingPage() {
           <div className="bg-white p-4 rounded-xl border border-slate-200 text-center shadow-2xs">
             <span className="text-2xl font-extrabold text-indigo-600 font-mono block">100%</span>
             <span className="text-xs font-semibold text-slate-600 mt-1 block">Tamper-Evident QR Seals</span>
+          </div>
+        </section>
+
+        {/* Passenger FAQ Section */}
+        <section className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+          <div className="text-center max-w-2xl mx-auto space-y-1">
+            <span className="text-[11px] font-bold text-railway-800 uppercase tracking-wider bg-railway-50 px-2.5 py-1 rounded-full border border-railway-200 inline-block">
+              Passenger Assistance & Guidelines
+            </span>
+            <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+              Frequently Asked Questions (FAQs)
+            </h3>
+            <p className="text-xs text-slate-500">
+              Official clarifications on meal QR scanning, photo uploads, and resolution timelines.
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto divide-y divide-slate-200 space-y-1">
+            {faqs.map((faq, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <div key={index} className="pt-3 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(isOpen ? null : index)}
+                    className="w-full py-2.5 flex items-center justify-between text-left text-xs sm:text-sm font-bold text-slate-900 hover:text-railway-800 transition-colors cursor-pointer gap-4"
+                  >
+                    <span>{faq.q}</span>
+                    <span className={`text-base transition-transform duration-200 text-slate-400 ${isOpen ? 'rotate-180 text-railway-800 font-bold' : ''}`}>
+                      ▾
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="pt-1 pb-3 text-xs text-slate-600 leading-relaxed animate-in fade-in pl-1">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="font-medium">Have an urgent catering or hygiene emergency on board?</span>
+            <a
+              href="tel:139"
+              className="px-3.5 py-2 rounded-lg bg-railway-900 hover:bg-railway-800 text-white font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <span>📞</span>
+              <span>Dial Rail Madad 139 (24x7 Toll Free)</span>
+            </a>
           </div>
         </section>
       </main>

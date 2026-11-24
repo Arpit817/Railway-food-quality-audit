@@ -6,6 +6,7 @@ import { metadataApi } from '../api/complaintsApi.js';
 import { Card, Button, FormField, TextInput, Badge, StarRating } from '../components/ui/index.js';
 import { useUIStore } from '../store/uiStore.js';
 import { useRealtimeSync } from '../hooks/useRealtimeSync.js';
+import { useAuth } from '../features/auth/index.js';
 
 /**
  * Official Railway Catering Vendor & Base Kitchen Packaging Portal
@@ -19,6 +20,7 @@ import { useRealtimeSync } from '../hooks/useRealtimeSync.js';
  */
 export function VendorPortalPage() {
   const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
 
   useEffect(() => {
     document.title = 'Catering Vendor Packaging Portal — RailFood Audit';
@@ -127,37 +129,44 @@ export function VendorPortalPage() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-3 text-xs">
             <button
               type="button"
               onClick={handleBack}
-              className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
+              className="min-h-[36px] px-3 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-medium transition-colors flex items-center gap-1.5 cursor-pointer border border-railway-700"
               title="Go Back"
             >
               <span>←</span>
-              <span className="hidden sm:inline">Back</span>
+              <span>Back</span>
             </button>
-            <button
-              type="button"
-              onClick={() => navigate(1)}
-              className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
-              title="Go Forward"
-            >
-              <span className="hidden sm:inline">Forward</span>
-              <span>→</span>
-            </button>
-            <Link to="/" className="text-railway-200 hover:text-white px-2 py-1">
+            <Link to="/" className="text-railway-300 hover:text-white px-2 py-1 font-medium">
               Home
             </Link>
-            <Link to="/track" className="text-railway-200 hover:text-white px-2 py-1">
-              Tracker
-            </Link>
-            <Link
-              to="/login"
-              className="px-3 py-1.5 rounded-lg bg-railway-700 text-white font-semibold hover:bg-railway-600 transition-colors"
-            >
-              Staff Login
-            </Link>
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-railway-800 border border-railway-700 text-[11px] text-railway-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span className="font-semibold text-white">{currentUser.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    navigate('/login');
+                  }}
+                  className="px-2.5 py-1 rounded bg-railway-800 hover:bg-red-900/80 text-railway-200 hover:text-white font-medium border border-railway-700 transition-colors cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="px-3 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-medium border border-railway-700 transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </header>

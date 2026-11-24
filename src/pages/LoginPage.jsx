@@ -51,6 +51,10 @@ export function LoginPage() {
         });
         if (result.user.role === 'admin') {
           navigate('/admin/batches', { replace: true });
+        } else if (result.user.role === 'vendor') {
+          navigate('/vendor', { replace: true });
+        } else if (result.user.role === 'inspector') {
+          navigate('/dashboard', { replace: true });
         } else {
           navigate(from, { replace: true });
         }
@@ -100,6 +104,8 @@ export function LoginPage() {
         });
         if (result.user.role === 'admin') {
           navigate('/admin/batches', { replace: true });
+        } else if (result.user.role === 'vendor') {
+          navigate('/vendor', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
         }
@@ -123,30 +129,13 @@ export function LoginPage() {
             <span className="text-xl group-hover:scale-110 transition-transform">🚆</span>
             <span>RailFood Audit Public Portal</span>
           </Link>
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                if (window.history.length > 1) navigate(-1);
-                else navigate('/');
-              }}
-              className="px-2.5 py-1 rounded bg-railway-800 hover:bg-railway-700 text-white font-medium flex items-center gap-1 cursor-pointer border border-railway-700"
-              title="Go Back"
+          <div className="flex items-center gap-3 text-xs">
+            <Link
+              to="/"
+              className="px-3 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-medium flex items-center gap-1.5 transition-colors border border-railway-700"
             >
               <span>←</span>
-              <span>Back</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(1)}
-              className="px-2.5 py-1 rounded bg-railway-800 hover:bg-railway-700 text-white font-medium flex items-center gap-1 cursor-pointer border border-railway-700"
-              title="Go Forward"
-            >
-              <span>Forward</span>
-              <span>→</span>
-            </button>
-            <Link to="/" className="text-railway-300 hover:text-white px-2 py-1">
-              Home
+              <span>Back to Public Portal</span>
             </Link>
           </div>
         </div>
@@ -311,6 +300,7 @@ export function LoginPage() {
                     className="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-300 bg-white min-h-[42px]"
                   >
                     <option value="inspector">Safety Inspector</option>
+                    <option value="vendor">Catering Vendor / Base Kitchen</option>
                     <option value="admin">Catering Administrator</option>
                   </select>
                 </div>

@@ -14,6 +14,15 @@ export const INITIAL_STAFF_ACCOUNTS = [
     badgeId: 'NR-FSO-884'
   },
   {
+    id: 'user-vendor-01',
+    name: 'Express Caterers (Pantry Licensee)',
+    email: 'vendor.express@railfood.gov.in',
+    password: 'Vendor@2026',
+    role: 'vendor',
+    zone: 'Northern Zone',
+    badgeId: 'RR-CAT-2024-001'
+  },
+  {
     id: 'user-admin-01',
     name: 'Director Neha Gupta',
     email: 'admin.safety@railfood.gov.in',
