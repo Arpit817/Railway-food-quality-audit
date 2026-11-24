@@ -76,7 +76,10 @@ export function QualityAnalyticsPage() {
   // Chart Data 3: Hourly Complaint Trend
   const trendData = useMemo(() => {
     const hourlyMap = complaints.reduce((acc, c) => {
-      const hour = new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '00' });
+      const d = new Date(c.createdAt);
+      const hour = !isNaN(d.getTime())
+        ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'Active';
       acc[hour] = (acc[hour] || 0) + 1;
       return acc;
     }, {});

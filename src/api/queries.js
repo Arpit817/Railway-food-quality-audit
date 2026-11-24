@@ -28,11 +28,11 @@ export const queryKeys = {
  * - refetchInterval: 30 seconds background sync
  * - Eliminates manual useEffect fetching!
  */
-export function useComplaintsQuery(filters = {}) {
+export function useComplaintsQuery(filters = {}, options = {}) {
   return useQuery({
     queryKey: queryKeys.complaints.list(filters),
     queryFn: () => complaintsApi.getAll(filters),
-    refetchInterval: 30000, // Background revalidation every 30 seconds
+    refetchInterval: options.refetchInterval !== undefined ? options.refetchInterval : 30000,
     select: (data) => data || []
   });
 }

@@ -12,6 +12,7 @@ const ComplaintsPage = lazy(() => import('./pages/ComplaintsPage.jsx'));
 const VendorsPage = lazy(() => import('./pages/VendorsPage.jsx'));
 const QualityAnalyticsPage = lazy(() => import('./pages/QualityAnalyticsPage.jsx'));
 const AdminBatchesPage = lazy(() => import('./pages/AdminBatchesPage.jsx'));
+const VendorPortalPage = lazy(() => import('./pages/VendorPortalPage.jsx'));
 const QRLandingPage = lazy(() => import('./pages/QRLandingPage.jsx'));
 const TrackPage = lazy(() => import('./pages/TrackPage.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
@@ -46,6 +47,9 @@ export function App() {
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/f/:token" element={<QRLandingPage />} />
+              <Route path="/scan" element={<QRLandingPage />} />
+              <Route path="/scan/:token" element={<QRLandingPage />} />
+              <Route path="/vendor" element={<VendorPortalPage />} />
               <Route path="/track" element={<TrackPage />} />
               <Route path="/track/:referenceNo" element={<TrackPage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -75,7 +79,7 @@ export function App() {
                 }
               >
                 <Route index element={<Navigate to="/admin/batches" replace />} />
-                <Route path="batches" element={<AdminBatchesPage />} />
+                <Route path="batches" element={<VendorPortalPage />} />
               </Route>
 
               {/* Custom 404 Catch-All */}

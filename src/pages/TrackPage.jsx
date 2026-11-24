@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useComplaintsQuery, useMetadataQuery } from '../api/index.js';
 import { Card, Button, Badge, StarRating } from '../components/ui/index.js';
 import { useUIStore } from '../store/uiStore.js';
+import { useRealtimeSync } from '../hooks/useRealtimeSync.js';
 
 /**
  * Public Complaint Tracking Page (/track and /track/:referenceNo)
@@ -17,7 +18,8 @@ export function TrackPage() {
   }, []);
 
   const [searchRef, setSearchRef] = useState(paramRef || '');
-  const { data: complaints = [], isLoading } = useComplaintsQuery();
+  useRealtimeSync();
+  const { data: complaints = [], isLoading, refetch } = useComplaintsQuery({}, { refetchInterval: 2500 });
   const { batches = [], kitchens = [], vendors = [] } = useMetadataQuery();
 
   const handleSearch = (e) => {
@@ -58,7 +60,7 @@ export function TrackPage() {
       key: 'new',
       label: '1. Grievance Registered',
       description: 'Submitted by passenger via QR scan; packaging token verified.',
-      icon: '📦'
+      icon: '📝'
     },
     {
       key: 'under_review',
@@ -102,11 +104,32 @@ export function TrackPage() {
               <span className="text-[10px] text-railway-300 font-normal">Public Grievance Tracker</span>
             </div>
           </Link>
-          <div className="flex items-center gap-3 text-xs">
-            <Link to="/" className="text-railway-200 hover:text-white">
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) navigate(-1);
+                else navigate('/');
+              }}
+              className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
+              title="Go Back"
+            >
+              <span>←</span>
+              <span className="hidden sm:inline">Back</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(1)}
+              className="min-h-[36px] px-2.5 py-1.5 rounded-lg bg-railway-800 hover:bg-railway-700 text-white font-semibold transition-colors flex items-center gap-1 cursor-pointer border border-railway-700"
+              title="Go Forward"
+            >
+              <span className="hidden sm:inline">Forward</span>
+              <span>→</span>
+            </button>
+            <Link to="/" className="text-railway-200 hover:text-white px-2 py-1">
               Home
             </Link>
-            <Link to="/login" className="px-2.5 py-1 rounded bg-railway-700 text-white font-semibold hover:bg-railway-600">
+            <Link to="/login" className="px-2.5 py-1.5 rounded bg-railway-700 text-white font-semibold hover:bg-railway-600">
               Staff Login
             </Link>
           </div>
@@ -173,8 +196,8 @@ export function TrackPage() {
                     Current Grievance Lifecycle Status
                   </span>
                   <h2 className="text-lg sm:text-xl font-extrabold capitalize text-white flex items-center gap-2 mt-0.5">
-                    <span>{LIFECYCLE_STEPS[currentStepIndex]?.icon}</span>
-                    <span>{matchedComplaint.status.replace(/_/g, ' ')}</span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+                    <span>Status: {matchedComplaint.status.replace(/_/g, ' ')}</span>
                   </h2>
                 </div>
 
@@ -215,10 +238,35 @@ export function TrackPage() {
 
             {/* Amazon / Flipkart Visual Milestone Progress Stepper */}
             <Card className="p-6 bg-white border-slate-200 shadow-sm space-y-6">
-              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
-                <span>Official Statutory Resolution Tracker</span>
-                <span className="text-[11px] font-normal text-slate-400">Step {currentStepIndex + 1} of 5</span>
-              </h3>
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Official Statutory Resolution Tracker
+                  </h3>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                    Live Updates (2.5s)
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-semibold text-slate-500">Step {currentStepIndex + 1} of 5</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      refetch();
+                      useUIStore.getState().showToast({
+                        type: 'info',
+                        title: 'Status Synchronized',
+                        message: 'Latest grievance milestone status fetched from audit ledger.'
+                      });
+                    }}
+                    className="text-[11px] font-bold text-railway-700 hover:text-railway-900 cursor-pointer flex items-center gap-1 px-2 py-1 rounded hover:bg-railway-50 transition-colors"
+                    title="Force refresh now"
+                  >
+                    <span>🔄 Check Updates</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Vertical Milestone Tracker */}
               <div className="relative pl-6 sm:pl-8 space-y-8 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">

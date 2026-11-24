@@ -49,9 +49,10 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem(CURRENT_USER_KEY);
-      return saved ? JSON.parse(saved) : INITIAL_STAFF_ACCOUNTS[0];
+      // Only restore session if explicitly saved — never auto-login
+      return saved ? JSON.parse(saved) : null;
     } catch {
-      return INITIAL_STAFF_ACCOUNTS[0];
+      return null;
     }
   });
 

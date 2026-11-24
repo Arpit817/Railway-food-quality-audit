@@ -123,9 +123,32 @@ export function LoginPage() {
             <span className="text-xl group-hover:scale-110 transition-transform">🚆</span>
             <span>RailFood Audit Public Portal</span>
           </Link>
-          <Link to="/" className="text-xs text-railway-300 hover:text-white flex items-center gap-1">
-            &larr; Back to Public Portal
-          </Link>
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) navigate(-1);
+                else navigate('/');
+              }}
+              className="px-2.5 py-1 rounded bg-railway-800 hover:bg-railway-700 text-white font-medium flex items-center gap-1 cursor-pointer border border-railway-700"
+              title="Go Back"
+            >
+              <span>←</span>
+              <span>Back</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(1)}
+              className="px-2.5 py-1 rounded bg-railway-800 hover:bg-railway-700 text-white font-medium flex items-center gap-1 cursor-pointer border border-railway-700"
+              title="Go Forward"
+            >
+              <span>Forward</span>
+              <span>→</span>
+            </button>
+            <Link to="/" className="text-railway-300 hover:text-white px-2 py-1">
+              Home
+            </Link>
+          </div>
         </div>
       </header>
 

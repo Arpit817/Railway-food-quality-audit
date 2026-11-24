@@ -7,15 +7,111 @@ import { feedbackSchema } from '../utils/validationSchemas.js';
 import { useTokenResolutionQuery, useMetadataQuery, useCreateComplaintMutation } from '../api/index.js';
 import { useUIStore } from '../store/uiStore.js';
 
-export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashboard }) {
-  useEffect(() => {
-    document.title = 'Passenger Grievance Portal — RailFood Audit';
-  }, []);
-
+export function PassengerMobileView({ initialToken = '', onBackToDashboard }) {
   const isOnline = useOnlineStatus();
   const [isAnonymous, toggleAnonymous] = useToggle(false);
 
   const [tokenInput, setTokenInput] = useState(initialToken);
+  const [manualCode, setManualCode] = useState('');
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+
+  const videoRef = React.useRef(null);
+  const streamRef = React.useRef(null);
+  const scanIntervalRef = React.useRef(null);
+
+  useEffect(() => {
+    document.title = 'Passenger Grievance Portal — RailFood Audit';
+    return () => {
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  const startCameraScanner = async () => {
+    setCameraError('');
+    setIsCameraActive(true);
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+
+          if ('BarcodeDetector' in window) {
+            const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+            scanIntervalRef.current = setInterval(async () => {
+              if (videoRef.current && videoRef.current.readyState === 4) {
+                try {
+                  const codes = await detector.detect(videoRef.current);
+                  if (codes.length > 0) {
+                    const raw = codes[0].rawValue;
+                    const match = raw.match(/\/f\/([a-zA-Z0-9]+)/);
+                    const tok = match ? match[1] : raw;
+                    stopCameraScanner();
+                    setTokenInput(tok);
+                  }
+                } catch {}
+              }
+            }, 500);
+          }
+        }
+      } else {
+        setCameraError('Camera access not supported on this browser.');
+      }
+    } catch {
+      setCameraError('Camera permission denied or device busy. Please upload a photo or enter the code.');
+    }
+  };
+
+  const stopCameraScanner = () => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if ('BarcodeDetector' in window) {
+        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = async () => {
+          try {
+            const barcodes = await detector.detect(img);
+            if (barcodes.length > 0) {
+              const raw = barcodes[0].rawValue;
+              const match = raw.match(/\/f\/([a-zA-Z0-9]+)/);
+              const tok = match ? match[1] : raw;
+              setTokenInput(tok);
+              return;
+            }
+          } catch {}
+          useUIStore.getState().showToast({
+            type: 'info',
+            title: 'Photo Uploaded',
+            message: 'Image received. Please confirm the packaging token to proceed.'
+          });
+        };
+      } else {
+        useUIStore.getState().showToast({
+          type: 'info',
+          title: 'Photo Uploaded',
+          message: 'Image received. Please enter the packaging token to proceed.'
+        });
+      }
+    }
+  };
 
   // 1. REACT QUERY: Fetch and cache token verification
   const {
@@ -150,43 +246,200 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashb
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4 bg-slate-100 px-3 py-2 rounded-lg text-xs border border-slate-200">
-        <Link to="/" className="text-railway-900 font-bold flex items-center gap-1.5 hover:underline">
-          <span>🚆</span>
-          <span>RailFood Audit Public Portal</span>
-        </Link>
-        <Link to="/track" className="text-slate-600 font-medium hover:text-railway-800">
-          Track Status &rarr;
-        </Link>
+      <div className="flex items-center justify-between mb-4 bg-slate-100 px-3 py-2 rounded-xl text-xs border border-slate-200 gap-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) window.history.back();
+              else window.location.href = '/';
+            }}
+            className="px-2 py-1 rounded bg-white hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
+            title="Go Back"
+          >
+            <span>←</span>
+            <span>Back</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => window.history.forward()}
+            className="px-2 py-1 rounded bg-white hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
+            title="Go Forward"
+          >
+            <span>Forward</span>
+            <span>→</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="text-railway-900 font-bold flex items-center gap-1 hover:underline">
+            <span>🚆</span>
+            <span>Home</span>
+          </Link>
+          <Link to="/track" className="text-railway-700 font-semibold hover:underline">
+            Tracker &rarr;
+          </Link>
+        </div>
       </div>
 
       <Card className="border-railway-200 shadow-md">
-        <div className="bg-railway-800 text-white p-4 text-center">
-          <span className="text-2xl mb-1 block" role="img" aria-label="train">🚆</span>
-          <h2 className="text-base font-bold">Authorized Packaging Scanned</h2>
-          <p className="text-xs text-railway-200 mt-0.5">IRCTC Real-Time Quality Feedback</p>
-          <div className="mt-2 inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full font-mono text-xs">
-            <span className="text-railway-200">Packaging Token:</span>
-            <span className="font-bold text-white tracking-wider">{tokenInput}</span>
-          </div>
-        </div>
+        {/* State 1: No token scanned yet */}
+        {!tokenInput ? (
+          <div>
+            <div className="bg-railway-800 text-white p-5 text-center">
+              <span className="text-3xl mb-1 block" role="img" aria-label="camera">📷</span>
+              <h2 className="text-base font-bold">Scan Meal Packaging QR Code</h2>
+              <p className="text-xs text-railway-200 mt-0.5">IRCTC Real-Time Quality Feedback</p>
+            </div>
 
-        {isTokenLoading && (
-          <div className="p-6 text-center text-xs text-slate-500">
-            <span className="animate-spin inline-block mr-2">⏳</span>
-            Verifying packaging token via React Query cache...
-          </div>
-        )}
+            {isCameraActive ? (
+              <div className="bg-black p-4 text-center text-white space-y-3">
+                <div className="flex items-center justify-between text-xs pb-1">
+                  <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    Live Camera QR Scanner Active
+                  </span>
+                  <button
+                    type="button"
+                    onClick={stopCameraScanner}
+                    className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-white font-bold cursor-pointer"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
 
-        {(isTokenInvalid || isTokenError) && !isTokenLoading && (
-          <div className="p-5">
-            <ErrorMessage
-              title="Invalid or Expired QR Token"
-              message="This token does not correspond to authorized railway food packaging."
-              onRetry={() => setTokenInput('Xk9PqA72mZ')}
-            />
+                <div className="relative rounded-xl overflow-hidden aspect-square max-w-xs mx-auto border-2 border-emerald-400 bg-black">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-6 border-2 border-dashed border-white/80 rounded-lg pointer-events-none flex items-center justify-center">
+                    <span className="text-[10px] text-white bg-black/60 px-2 py-0.5 rounded">
+                      Align meal QR sticker inside box
+                    </span>
+                  </div>
+                </div>
+
+                {cameraError && (
+                  <p className="text-xs text-amber-300">{cameraError}</p>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={stopCameraScanner}
+                  className="w-full text-white border-white/30 hover:bg-white/10"
+                >
+                  Close Camera
+                </Button>
+              </div>
+            ) : (
+              <div className="p-5 text-center space-y-4">
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Point your phone camera at the tamper-evident QR sticker on your meal container, or choose an option below:
+                </p>
+
+                {/* Real QR Scanning Methods */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={startCameraScanner}
+                    className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 transition-all flex flex-col items-center justify-center text-center gap-1 cursor-pointer shadow-xs group"
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">📷</span>
+                    <strong className="text-xs text-emerald-950 font-bold">Start Camera Scanner</strong>
+                    <span className="text-[10px] text-emerald-800">Scan QR seal with phone</span>
+                  </button>
+
+                  <label className="p-3.5 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 transition-all flex flex-col items-center justify-center text-center gap-1 cursor-pointer shadow-xs group">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🖼️</span>
+                    <strong className="text-xs text-slate-900 font-bold">Upload QR Photo</strong>
+                    <span className="text-[10px] text-slate-500">Pick from gallery / snap</span>
+                  </label>
+                </div>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-slate-200"></div>
+                  <span className="flex-shrink mx-2 text-[10px] text-slate-400 font-bold uppercase">Or Type 10-Digit Code</span>
+                  <div className="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (manualCode.trim()) setTokenInput(manualCode.trim());
+                  }}
+                  className="space-y-2.5"
+                >
+                  <TextInput
+                    id="packaging-code"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    placeholder="e.g. 10-character code"
+                    className="font-mono text-center font-bold text-sm tracking-widest min-h-[44px]"
+                  />
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    disabled={!manualCode.trim()}
+                    className="w-full min-h-[44px] font-bold cursor-pointer"
+                  >
+                    Verify Packaging & File Grievance →
+                  </Button>
+                </form>
+
+                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+                  Need immediate help on train? Call Rail Madad at{' '}
+                  <a href="tel:139" className="text-railway-700 font-bold hover:underline">
+                    📞 139
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        ) : (
+          <div>
+            {/* State 2: Token Scanned / Entered */}
+            <div className="bg-railway-800 text-white p-4 text-center">
+              <span className="text-2xl mb-1 block" role="img" aria-label="train">🚆</span>
+              <h2 className="text-base font-bold">Authorized Packaging Verified</h2>
+              <p className="text-xs text-railway-200 mt-0.5">IRCTC Real-Time Quality Feedback</p>
+              <div className="mt-2 inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full font-mono text-xs">
+                <span className="text-railway-200">Packaging Token:</span>
+                <span className="font-bold text-white tracking-wider">{tokenInput}</span>
+              </div>
+            </div>
+
+            {isTokenLoading && (
+              <div className="p-6 text-center text-xs text-slate-500">
+                <span className="animate-spin inline-block mr-2">⏳</span>
+                Verifying packaging token via audit ledger...
+              </div>
+            )}
+
+            {(isTokenInvalid || isTokenError) && !isTokenLoading && (
+              <div className="p-5">
+                <ErrorMessage
+                  title="Invalid or Expired QR Token"
+                  message="This token does not correspond to authorized railway food packaging."
+                  onRetry={() => {
+                    setTokenInput('');
+                    setManualCode('');
+                  }}
+                />
+              </div>
+            )}
 
         {qrRecord && !isTokenLoading && !isTokenInvalid && (
           <div className="bg-railway-50 px-4 py-3 border-b border-railway-100 text-xs space-y-1">
@@ -360,7 +613,9 @@ export function PassengerMobileView({ initialToken = 'Xk9PqA72mZ', onBackToDashb
             )}
           </div>
         )}
-      </Card>
+      </div>
+    )}
+  </Card>
     </div>
   );
 }

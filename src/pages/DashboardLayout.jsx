@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../features/auth/index.js';
 import { AuditClock } from '../components/AuditClock.jsx';
+import { useRealtimeSync } from '../hooks/useRealtimeSync.js';
+import { isSupabaseConfigured, setSupabaseCredentials } from '../lib/supabase.js';
 
 /**
  * DashboardLayout with responsive mobile navigation and persistent enterprise footer
@@ -17,6 +19,13 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null); // 'fssai' | 'guidelines' | 'contact'
+  const [cloudModalOpen, setCloudModalOpen] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const [keyInput, setKeyInput] = useState('');
+
+  // Enable Real-Time Cross-Device WebSocket Sync
+  useRealtimeSync();
+  const isCloudConnected = isSupabaseConfigured();
 
   const handleLogout = () => {
     logout();
@@ -179,26 +188,6 @@ export function DashboardLayout() {
               <span>{link.label}</span>
             </NavLink>
           ))}
-
-          <div className="text-[11px] font-semibold tracking-wider text-railway-400 uppercase px-3 pt-3 pb-1 border-t border-railway-800/80 mt-2">
-            Public Passenger Portals
-          </div>
-          <Link
-            to="/f/Xk9PqA72mZ"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-railway-800 hover:text-emerald-300 transition-all"
-            title="Open Passenger Mobile Web Portal"
-          >
-            <span className="text-sm">📱</span>
-            <span>Passenger QR Portal</span>
-          </Link>
-          <Link
-            to="/track"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-railway-200 hover:bg-railway-800 hover:text-white transition-all"
-            title="Public Grievance Tracker"
-          >
-            <span className="text-sm">🔎</span>
-            <span>Track Grievance</span>
-          </Link>
         </nav>
 
         {/* User Card & Logout */}
@@ -219,19 +208,46 @@ export function DashboardLayout() {
 
       {/* Main Content Pane with Nested Outlet */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <Link
-              to="/f/Xk9PqA72mZ"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-              title="Passenger Meal Packaging Feedback Portal"
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) navigate(-1);
+                else navigate('/');
+              }}
+              className="px-2.5 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
+              title="Go Back"
             >
-              <span>📱</span>
-              <span>Passenger QR Portal</span>
-            </Link>
-            <div className="hidden sm:block text-xs text-slate-500">
-              Environment: <strong className="text-slate-800 font-mono">React 19 / Fast Refresh</strong>
-            </div>
+              <span>←</span>
+              <span>Back</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(1)}
+              className="px-2.5 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-200 cursor-pointer flex items-center gap-1"
+              title="Go Forward"
+            >
+              <span>Forward</span>
+              <span>→</span>
+            </button>
+            <span className="text-xs font-bold text-slate-800 px-2 py-1 bg-slate-100 rounded border border-slate-200 flex items-center gap-1.5">
+              <span>🛡️</span>
+              <span className="hidden sm:inline">Food Safety & Inspection Workspace</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setCloudModalOpen(true)}
+              className={`px-2.5 py-1 text-xs rounded font-medium border flex items-center gap-1.5 transition-colors cursor-pointer ${
+                isCloudConnected
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                  : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+              }`}
+              title="Click to view or configure Supabase Cloud Sync"
+            >
+              <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <span className="font-semibold">{isCloudConnected ? 'Supabase Live Sync' : 'Local Mode (Connect Cloud)'}</span>
+            </button>
           </div>
           <AuditClock />
         </header>
@@ -408,6 +424,117 @@ export function DashboardLayout() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cloud Sync Configuration Modal */}
+      {cloudModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setCloudModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4 border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">☁️</span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Supabase Cloud Real-Time Sync
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCloudModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 space-y-3">
+              <div className={`p-3 rounded-lg border flex items-center justify-between ${
+                isCloudConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}>
+                <div>
+                  <span className="font-bold block">Status: {isCloudConnected ? 'Connected & Live Synchronized' : 'Local Storage Mode'}</span>
+                  <span className="text-[11px]">
+                    {isCloudConnected
+                      ? 'Passenger submissions from phones instantly reflect on this dashboard in real-time via WebSockets.'
+                      : 'Complaints are currently stored only in this browser. Connect Supabase to sync between phone and PC.'}
+                  </span>
+                </div>
+                <span className={`w-3 h-3 rounded-full flex-shrink-0 ${isCloudConnected ? 'bg-emerald-500 animate-ping' : 'bg-amber-400'}`} />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block font-semibold text-slate-800 text-[11px]">
+                  Supabase Project URL:
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://xyzcompany.supabase.co"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-railway-800 focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block font-semibold text-slate-800 text-[11px]">
+                  Supabase Anon Public API Key:
+                </label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-railway-800 focus:outline-none"
+                />
+              </div>
+
+              <p className="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded border border-slate-200">
+                💡 <strong>Tip:</strong> You can also set these in your <code>.env</code> file or Vercel Environment Variables as <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>. Schema SQL is available at <code>supabase_schema.sql</code>.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between border-t border-slate-200">
+              {isCloudConnected ? (
+                <button
+                  type="button"
+                  onClick={() => setSupabaseCredentials(null, null)}
+                  className="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold cursor-pointer border border-red-200"
+                >
+                  Disconnect Cloud
+                </button>
+              ) : <div />}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCloudModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (urlInput.trim() && keyInput.trim()) {
+                      setSupabaseCredentials(urlInput.trim(), keyInput.trim());
+                    }
+                  }}
+                  disabled={!urlInput.trim() || !keyInput.trim()}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer shadow-xs"
+                >
+                  Connect & Sync
+                </button>
+              </div>
             </div>
           </div>
         </div>
