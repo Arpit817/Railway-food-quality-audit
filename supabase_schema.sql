@@ -94,8 +94,112 @@ DROP POLICY IF EXISTS "Public can insert qr_codes" ON public.qr_codes;
 CREATE POLICY "Public can insert qr_codes" ON public.qr_codes FOR INSERT WITH CHECK (true);
 
 -- ==============================================================================
--- 5. Enable Realtime Publications (Instant WebSocket updates across all devices)
+-- 5. Enable Realtime Publications (Safely adds tables without duplicate error)
 -- ==============================================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE public.complaints;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.batches;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.qr_codes;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'complaints'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.complaints;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'batches'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.batches;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'qr_codes'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.qr_codes;
+  END IF;
+END $$;
+
+-- ==============================================================================
+-- 6. FEEDBACK Table (Passenger Meal Ratings → Vendor Scorecard)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.feedback (
+    id TEXT PRIMARY KEY,
+    token TEXT,
+    "batchId" TEXT,
+    "vendorId" TEXT,
+    "kitchenId" TEXT,
+    "trainNumber" TEXT,
+    "overallRating" NUMERIC,
+    "foodQualityRating" NUMERIC,
+    "quantityRating" NUMERIC,
+    "packagingRating" NUMERIC,
+    "temperatureRating" NUMERIC,
+    "positiveComment" TEXT,
+    "improvementComment" TEXT,
+    "wouldOrderAgain" TEXT,
+    "passengerName" TEXT,
+    "createdAt" TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_vendor ON public.feedback ("vendorId");
+CREATE INDEX IF NOT EXISTS idx_feedback_batch ON public.feedback ("batchId");
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON public.feedback ("createdAt" DESC);
+
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can read feedback" ON public.feedback;
+CREATE POLICY "Public can read feedback" ON public.feedback FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public can insert feedback" ON public.feedback;
+CREATE POLICY "Public can insert feedback" ON public.feedback FOR INSERT WITH CHECK (true);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'feedback'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.feedback;
+  END IF;
+END $$;
+
+-- ==============================================================================
+-- 7. STAFF_ACCOUNTS Table (Cross-Device Authentication)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.staff_accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT DEFAULT 'inspector',
+    zone TEXT,
+    "badgeId" TEXT,
+    "createdAt" TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_email ON public.staff_accounts (email);
+
+ALTER TABLE public.staff_accounts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can read staff_accounts" ON public.staff_accounts;
+CREATE POLICY "Public can read staff_accounts" ON public.staff_accounts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public can insert staff_accounts" ON public.staff_accounts;
+CREATE POLICY "Public can insert staff_accounts" ON public.staff_accounts FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Public can update staff_accounts" ON public.staff_accounts;
+CREATE POLICY "Public can update staff_accounts" ON public.staff_accounts FOR UPDATE USING (true);
+
+-- ==============================================================================
+-- 8. Seed Initial Staff Accounts (run once — safe to re-run)
+-- ==============================================================================
+INSERT INTO public.staff_accounts (id, name, email, password, role, zone, "badgeId") VALUES
+  ('user-insp-01', 'Inspector Ramesh Sharma', 'inspector.nr@railfood.gov.in', 'Railway@2026', 'inspector', 'Northern Zone', 'NR-FSO-884'),
+  ('user-vendor-01', 'Express Caterers (Pantry Licensee)', 'vendor.express@railfood.gov.in', 'Vendor@2026', 'vendor', 'Northern Zone', 'RR-CAT-2024-001'),
+  ('user-admin-01', 'Director Neha Gupta', 'admin.safety@railfood.gov.in', 'AdminHQ@2026', 'admin', 'All India HQ', 'HQ-DIR-019')
+ON CONFLICT (id) DO NOTHING;
+

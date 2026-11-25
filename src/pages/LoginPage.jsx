@@ -28,7 +28,7 @@ export function LoginPage() {
 
   const from = location.state?.from?.pathname || '/dashboard';
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -39,8 +39,8 @@ export function LoginPage() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const result = loginWithCredentials(email, password);
+    try {
+      const result = await loginWithCredentials(email, password);
       setIsSubmitting(false);
 
       if (result.success) {
@@ -66,10 +66,13 @@ export function LoginPage() {
           message: result.error
         });
       }
-    }, 300);
+    } catch {
+      setIsSubmitting(false);
+      setErrorMsg('Login failed. Please check your credentials.');
+    }
   };
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -85,8 +88,8 @@ export function LoginPage() {
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const result = registerStaff({
+    try {
+      const result = await registerStaff({
         name: fullName,
         email,
         password,
@@ -117,7 +120,10 @@ export function LoginPage() {
           message: result.error
         });
       }
-    }, 300);
+    } catch {
+      setIsSubmitting(false);
+      setErrorMsg('Registration failed. Please try again.');
+    }
   };
 
   return (

@@ -10,7 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 8000
+  timeout: 3000  // Reduced from 8000ms to 3000ms — avoids 8s hang on mobile when no local server
 });
 
 // Request Interceptor

@@ -16,19 +16,65 @@ export const VENDORS = [
     id: 'ven-001',
     name: 'Express Caterers Pvt Ltd',
     licenseNo: 'RR-CAT-2023-019',
-    contact: '+91 98110 12345'
+    fssaiLicenseNo: '10019011000119',
+    contact: '+91 98110 12345',
+    zone: 'Northern'
   },
   {
     id: 'ven-002',
-    name: 'Pooja Rail Cuisines',
+    name: 'Comesum Rail Hospitality Ltd',
     licenseNo: 'RR-CAT-2022-088',
-    contact: '+91 98220 23456'
+    fssaiLicenseNo: '10020022000088',
+    contact: '+91 98220 23456',
+    zone: 'Western'
   },
   {
     id: 'ven-003',
-    name: 'Southern Rail Tiffins & Meals',
-    licenseNo: 'RR-CAT-2024-004',
-    contact: '+91 98440 34567'
+    name: 'IRCTC Central Hospitality Services',
+    licenseNo: 'RR-CAT-2021-004',
+    fssaiLicenseNo: '10021033000004',
+    contact: '+91 11 2340 5500',
+    zone: 'Central'
+  },
+  {
+    id: 'ven-004',
+    name: 'Pooja Rail Cuisines Pvt Ltd',
+    licenseNo: 'RR-CAT-2024-031',
+    fssaiLicenseNo: '10024044000031',
+    contact: '+91 98440 34567',
+    zone: 'Southern'
+  },
+  {
+    id: 'ven-005',
+    name: 'RK Associates & Hoteliers',
+    licenseNo: 'RR-CAT-2023-057',
+    fssaiLicenseNo: '10023055000057',
+    contact: '+91 98330 45678',
+    zone: 'Eastern'
+  },
+  {
+    id: 'ven-006',
+    name: "Haldiram's Rail Care Pvt Ltd",
+    licenseNo: 'RR-CAT-2022-074',
+    fssaiLicenseNo: '10022066000074',
+    contact: '+91 98770 56789',
+    zone: 'Northern'
+  },
+  {
+    id: 'ven-007',
+    name: 'Sunshine Caterers & Services',
+    licenseNo: 'RR-CAT-2024-012',
+    fssaiLicenseNo: '10024077000012',
+    contact: '+91 98550 67890',
+    zone: 'South Central'
+  },
+  {
+    id: 'ven-008',
+    name: 'Deepak & Co Pantry Licensee',
+    licenseNo: 'RR-CAT-2023-093',
+    fssaiLicenseNo: '10023088000093',
+    contact: '+91 98660 78901',
+    zone: 'North Eastern'
   }
 ];
 
@@ -42,8 +88,8 @@ export const KITCHENS = [
   },
   {
     id: 'kit-102',
-    vendorId: 'ven-001',
-    location: 'Kanpur Central Satellite Kitchen (CNB)',
+    vendorId: 'ven-006',
+    location: 'Kanpur Central Base Kitchen (CNB)',
     fssaiLicense: '10019011000456',
     zone: 'Northern'
   },
@@ -56,10 +102,52 @@ export const KITCHENS = [
   },
   {
     id: 'kit-104',
-    vendorId: 'ven-003',
+    vendorId: 'ven-004',
     location: 'Chennai Central Base Kitchen (MAS)',
     fssaiLicense: '10021033000321',
     zone: 'Southern'
+  },
+  {
+    id: 'kit-105',
+    vendorId: 'ven-004',
+    location: 'Krishnarajapuram Base Kitchen (SBC)',
+    fssaiLicense: '10024044000215',
+    zone: 'Southern'
+  },
+  {
+    id: 'kit-106',
+    vendorId: 'ven-005',
+    location: 'Howrah Junction Base Kitchen (HWH)',
+    fssaiLicense: '10023055000388',
+    zone: 'Eastern'
+  },
+  {
+    id: 'kit-107',
+    vendorId: 'ven-005',
+    location: 'Patna Junction Base Kitchen (PNBE)',
+    fssaiLicense: '10023055000421',
+    zone: 'Eastern'
+  },
+  {
+    id: 'kit-108',
+    vendorId: 'ven-003',
+    location: 'Bhopal Junction Base Kitchen (BPL)',
+    fssaiLicense: '10021033000509',
+    zone: 'Central'
+  },
+  {
+    id: 'kit-109',
+    vendorId: 'ven-007',
+    location: 'Secunderabad Base Kitchen (SC)',
+    fssaiLicense: '10024077000147',
+    zone: 'South Central'
+  },
+  {
+    id: 'kit-110',
+    vendorId: 'ven-008',
+    location: 'Guwahati Base Kitchen (GHY)',
+    fssaiLicense: '10023088000632',
+    zone: 'North Eastern'
   }
 ];
 

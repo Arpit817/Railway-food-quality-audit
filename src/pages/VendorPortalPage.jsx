@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useMetadataQuery, useComplaintsQuery } from '../api/index.js';
-import { metadataApi } from '../api/complaintsApi.js';
+import { metadataApi, feedbackApi } from '../api/complaintsApi.js';
 import { Card, Button, FormField, TextInput, Badge, StarRating } from '../components/ui/index.js';
 import { useUIStore } from '../store/uiStore.js';
 import { useRealtimeSync } from '../hooks/useRealtimeSync.js';
@@ -40,9 +40,29 @@ export function VendorPortalPage() {
   const [generatedTokens, setGeneratedTokens] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [formError, setFormError] = useState('');
+  const [feedbacks, setFeedbacks] = useState([]);
 
   const selectedVendor = vendors.find((v) => v.id === vendorId) || vendors[0];
   const selectedKitchen = kitchens.find((k) => k.id === kitchenId) || kitchens[0];
+
+  // Fetch feedback for this vendor
+  useEffect(() => {
+    let isMounted = true;
+    const loadFeedback = async () => {
+      try {
+        const data = await feedbackApi.getByVendor(vendorId);
+        if (isMounted) setFeedbacks(data || []);
+      } catch (err) {
+        console.warn('Failed to load feedback:', err);
+      }
+    };
+    loadFeedback();
+    const interval = setInterval(loadFeedback, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [vendorId]);
 
   // Filter real complaints filed by passengers for this specific vendor
   const vendorComplaints = complaints.filter(
@@ -190,13 +210,6 @@ export function VendorPortalPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              to="/scan"
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border border-slate-200"
-            >
-              <span>📷</span>
-              <span>Test Passenger Scanner</span>
-            </Link>
           </div>
         </div>
 
@@ -264,11 +277,22 @@ export function VendorPortalPage() {
                     onChange={(e) => setQuantity(Number(e.target.value))}
                     className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white min-h-[44px] font-semibold focus:outline-none focus:ring-2 focus:ring-railway-500"
                   >
-                    <option value={3}>3 Stickers (Quick Test)</option>
-                    <option value={6}>6 Stickers (1 Coach Bay)</option>
-                    <option value={12}>12 Stickers (Coach Sheet)</option>
-                    <option value={24}>24 Stickers (Full Batch)</option>
+                    <option value={6}>6 Stickers (Small Batch)</option>
+                    <option value={12}>12 Stickers (Half Crate)</option>
+                    <option value={24}>24 Stickers (Full Crate)</option>
+                    <option value={48}>48 Stickers (Bay Sheet)</option>
+                    <option value={0}>Custom...</option>
                   </select>
+                  {quantity === 0 && (
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      placeholder="Enter exact count (1–500)"
+                      className="mt-1.5 w-full text-xs p-2.5 rounded-lg border border-railway-400 bg-railway-50 min-h-[44px] font-semibold focus:outline-none focus:ring-2 focus:ring-railway-500"
+                      onChange={(e) => setQuantity(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
+                    />
+                  )}
                 </FormField>
               </div>
 
@@ -397,9 +421,9 @@ export function VendorPortalPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 min-h-[30px] px-2 py-1 rounded bg-railway-800 hover:bg-railway-700 text-white font-bold text-[10px] transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            title="Test open passenger scan form"
+                            title="Open passenger feedback portal for this QR"
                           >
-                            <span>Test Scan ↗</span>
+                            <span>Verify QR ↗</span>
                           </Link>
                           <button
                             type="button"
@@ -419,23 +443,122 @@ export function VendorPortalPage() {
           </Card>
         </div>
 
-        {/* Live Passenger Feedback & Quality Alerts for This Vendor */}
+        {/* 1. Direct Passenger Meal Feedback & Scorecard */}
+        <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🌟</span>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Passenger Meal Feedback & Quality Scorecard ({selectedVendor?.name})
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Direct ratings and constructive reviews submitted by passengers via QR scan
+              </p>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+              Total Reviews: {feedbacks.length}
+            </span>
+          </div>
+
+          {feedbacks.length === 0 ? (
+            <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500 space-y-1">
+              <span className="text-3xl block">🍽️</span>
+              <p className="font-bold text-slate-700">No passenger reviews received yet</p>
+              <p className="text-slate-500">When passengers scan your meal packaging QR and submit feedback, it will appear here in real-time.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Scorecard Summary */}
+              {(() => {
+                const avg = (k) => {
+                  const vals = feedbacks.map((f) => Number(f[k])).filter((v) => !isNaN(v) && v > 0);
+                  return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '—';
+                };
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 p-3.5 bg-amber-50/60 rounded-xl border border-amber-200 text-center">
+                    <div>
+                      <div className="text-[10px] text-amber-800 font-bold uppercase">Overall</div>
+                      <div className="text-lg font-black text-amber-900">{avg('overallRating')} ★</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-600 font-bold uppercase">Quality</div>
+                      <div className="text-sm font-bold text-slate-800">{avg('foodQualityRating')} ★</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-600 font-bold uppercase">Quantity</div>
+                      <div className="text-sm font-bold text-slate-800">{avg('quantityRating')} ★</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-600 font-bold uppercase">Packaging</div>
+                      <div className="text-sm font-bold text-slate-800">{avg('packagingRating')} ★</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-600 font-bold uppercase">Temperature</div>
+                      <div className="text-sm font-bold text-slate-800">{avg('temperatureRating')} ★</div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Reviews Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {feedbacks.map((f) => (
+                  <div key={f.id} className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-amber-400 transition-all space-y-2 text-xs shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-600">
+                        <span>★ {f.overallRating || 5}/5</span>
+                        <span className="text-slate-400 font-normal">|</span>
+                        <span className="text-slate-700">{f.passengerName ? f.passengerName : 'Anonymous Passenger'}</span>
+                      </div>
+                      {f.wouldOrderAgain && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                          Order Again: {f.wouldOrderAgain}
+                        </span>
+                      )}
+                    </div>
+
+                    {f.positiveComment && (
+                      <p className="text-emerald-800 bg-emerald-50/70 p-2 rounded-lg border border-emerald-100">
+                        <strong>Liked:</strong> "{f.positiveComment}"
+                      </p>
+                    )}
+
+                    {f.improvementComment && (
+                      <p className="text-amber-800 bg-amber-50/70 p-2 rounded-lg border border-amber-100">
+                        <strong>To Improve:</strong> "{f.improvementComment}"
+                      </p>
+                    )}
+
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                      <span>Train: <strong>{f.trainNumber || 'Railway'}</strong></span>
+                      <span>{new Date(f.createdAt).toLocaleDateString()} {new Date(f.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* 2. Official Grievance Alerts Served to this Vendor */}
         <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xl">⚠️</span>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Live Passenger Grievance Alerts & Feedback for {selectedVendor?.name}
+                  Official Food Safety Grievance Notices ({selectedVendor?.name})
                 </h3>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Real-time grievances filed by train passengers via meal packaging QR scans
+                Statutory grievances lodged with Railway Food Safety Officers for formal inspection
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
-                Total Complaints: {vendorComplaints.length}
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-50 text-red-800 border border-red-200">
+                Active Notices: {vendorComplaints.length}
               </span>
             </div>
           </div>
@@ -470,15 +593,15 @@ export function VendorPortalPage() {
                   </p>
 
                   <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1 border-t border-slate-100">
-                    <div>Seat/Coach: <strong>{c.seat || 'Coach Berth'}</strong></div>
-                    <div>Status: <strong className="capitalize text-emerald-800">{c.status?.replace(/_/g, ' ')}</strong></div>
-                    <div>Logged: {new Date(c.createdAt).toLocaleString()}</div>
+                    <div>Location: <strong>{c.seat || 'Coach Berth'}</strong></div>
+                    <div>Inspection Status: <strong className="capitalize text-emerald-800">{c.status?.replace(/_/g, ' ')}</strong></div>
+                    <div>Reported: {new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                     <Link
                       to={`/track/${c.referenceNo}`}
                       target="_blank"
                       className="text-railway-700 font-bold hover:underline"
                     >
-                      View Live Tracker ↗
+                      View Audit Ledger ↗
                     </Link>
                   </div>
                 </div>

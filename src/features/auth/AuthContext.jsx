@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase.js';
 
 /**
  * Initial Staff Accounts for Indian Railways Food Quality & Safety Administration
@@ -73,16 +74,41 @@ export function AuthProvider({ children }) {
     }
   }, [currentUser]);
 
-  const loginWithCredentials = (email, password) => {
+  const loginWithCredentials = async (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
 
+    // 1. Try Supabase staff_accounts table first (cross-device auth)
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('staff_accounts')
+          .select('*')
+          .eq('email', cleanEmail)
+          .eq('password', cleanPass)
+          .maybeSingle();
+        if (!error && data) {
+          const userPayload = { ...data };
+          delete userPayload.password;
+          setCurrentUser(userPayload);
+          return { success: true, user: userPayload };
+        }
+      } catch (err) {
+        console.warn('Supabase auth failed, falling back to local accounts:', err);
+      }
+    }
+
+    // 2. Fallback: local accounts (works offline / no Supabase)
     const accounts = getStoredStaffAccounts();
     const found = accounts.find(
       (acc) => acc.email.toLowerCase() === cleanEmail && acc.password === cleanPass
     );
 
     if (found) {
+      // Auto-sync to Supabase so cross-device login works immediately
+      if (isSupabaseConfigured() && supabase) {
+        supabase.from('staff_accounts').upsert([found]).then(() => {}).catch(() => {});
+      }
       const userPayload = { ...found };
       delete userPayload.password;
       setCurrentUser(userPayload);
@@ -95,7 +121,7 @@ export function AuthProvider({ children }) {
     };
   };
 
-  const registerStaff = ({ name, email, password, role = 'inspector', zone = 'Northern Zone', badgeId }) => {
+  const registerStaff = async ({ name, email, password, role = 'inspector', zone = 'Northern Zone', badgeId }) => {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanName = (name || '').trim();
     const cleanPass = (password || '').trim();
@@ -120,6 +146,15 @@ export function AuthProvider({ children }) {
       zone: zone || 'Northern Zone',
       badgeId: badgeId || `RAIL-${Math.floor(1000 + Math.random() * 9000)}`
     };
+
+    // Try saving to Supabase staff_accounts for cross-device access
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('staff_accounts').insert([newStaff]);
+      } catch (err) {
+        console.warn('Supabase staff registration failed, saving locally:', err);
+      }
+    }
 
     const updated = [...accounts, newStaff];
     try {

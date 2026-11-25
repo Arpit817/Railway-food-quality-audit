@@ -377,4 +377,74 @@ export const metadataApi = {
   }
 };
 
+export const feedbackApi = {
+  // Save passenger meal feedback (goes to vendor scorecard, not to inspector)
+  create: async (feedbackData) => {
+    const newEntry = {
+      id: feedbackData.id || `fbk-${Date.now()}`,
+      ...feedbackData,
+      createdAt: feedbackData.createdAt || new Date().toISOString()
+    };
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase.from('feedback').insert([newEntry]).select().single();
+        if (!error && data) {
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase feedback insert failed, saving locally:', err);
+      }
+    }
+
+    // Fallback: local storage
+    try {
+      const saved = localStorage.getItem('railfood_passenger_feedback');
+      const list = saved ? JSON.parse(saved) : [];
+      const updated = [newEntry, ...list];
+      localStorage.setItem('railfood_passenger_feedback', JSON.stringify(updated));
+    } catch {}
+    return newEntry;
+  },
+
+  // Get all feedback for a vendor (vendor scorecard)
+  getByVendor: async (vendorId) => {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('feedback')
+          .select('*')
+          .eq('vendorId', vendorId)
+          .order('createdAt', { ascending: false });
+        if (!error && Array.isArray(data)) return data;
+      } catch {}
+    }
+    try {
+      const saved = localStorage.getItem('railfood_passenger_feedback');
+      const list = saved ? JSON.parse(saved) : [];
+      return list.filter((f) => f.vendorId === vendorId);
+    } catch {
+      return [];
+    }
+  },
+
+  // Get overall ratings summary for a vendor
+  getRatingSummary: async (vendorId) => {
+    const feedbacks = await feedbackApi.getByVendor(vendorId);
+    if (!feedbacks.length) return null;
+    const avg = (key) => {
+      const vals = feedbacks.map((f) => Number(f[key])).filter((v) => !isNaN(v) && v > 0);
+      return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
+    };
+    return {
+      count: feedbacks.length,
+      overall: avg('overallRating'),
+      foodQuality: avg('foodQualityRating'),
+      quantity: avg('quantityRating'),
+      packaging: avg('packagingRating'),
+      temperature: avg('temperatureRating')
+    };
+  }
+};
+
 export default complaintsApi;
