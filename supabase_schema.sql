@@ -60,8 +60,17 @@ CREATE INDEX IF NOT EXISTS idx_qrcodes_batch ON public.qr_codes ("batchId");
 
 -- ==============================================================================
 -- 4. Enable Row Level Security (RLS) & Public Access Policies
--- (Allows anonymous passengers & inspectors to read/write without complex auth setup)
 -- ==============================================================================
+-- Grant schema and table access to API roles (anon and authenticated)
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+
 ALTER TABLE public.complaints ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.qr_codes ENABLE ROW LEVEL SECURITY;

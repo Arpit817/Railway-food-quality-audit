@@ -56,9 +56,22 @@ export function useRealtimeSync() {
       )
       .subscribe();
 
+    // Subscribe to changes on feedback table
+    const feedbackChannel = supabase
+      .channel('realtime:railfood:feedback')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'feedback' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['feedback'] });
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(complaintsChannel);
       supabase.removeChannel(batchesChannel);
+      supabase.removeChannel(feedbackChannel);
     };
   }, [queryClient]);
 }

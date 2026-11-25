@@ -5,7 +5,11 @@ function cleanUrl(rawUrl) {
   return rawUrl.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
 }
 
-// Get Supabase credentials from Vite environment variables or localStorage override
+// Production defaults (ensures Vercel deployment always connects to Central Ledger)
+const PRODUCTION_FALLBACK_URL = 'https://bsiibekoxkfvctpfebyr.supabase.co';
+const PRODUCTION_FALLBACK_KEY = 'sb_publishable_Is9PDQ45ZRTpT2YVIcI11w_Ca2qe5c_';
+
+// Get Supabase credentials from Vite environment variables, production fallback, or localStorage override
 function getSupabaseConfig() {
   const envUrl = cleanUrl(import.meta.env.VITE_SUPABASE_URL);
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
@@ -26,6 +30,11 @@ function getSupabaseConfig() {
     }
   } catch {
     // Ignore localStorage parse errors
+  }
+
+  // Fallback to project defaults so Vercel and all devices automatically sync without env config hassle
+  if (PRODUCTION_FALLBACK_URL && PRODUCTION_FALLBACK_KEY) {
+    return { url: PRODUCTION_FALLBACK_URL, key: PRODUCTION_FALLBACK_KEY };
   }
 
   return { url: null, key: null };
