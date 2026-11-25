@@ -119,18 +119,34 @@ export const complaintsApi = {
 
   // POST /complaints
   create: async (complaintData) => {
-    const newEntry = {
+    const cleanEntry = {
       id: complaintData.id || `cmp-${Date.now()}`,
-      ...complaintData,
+      referenceNo: complaintData.referenceNo,
+      token: complaintData.token || null,
+      batchId: complaintData.batchId || null,
+      vendorId: complaintData.vendorId || null,
+      kitchenId: complaintData.kitchenId || null,
+      rating: Number(complaintData.rating) || 1,
+      category: complaintData.category || 'other',
+      comment: complaintData.comment || '',
+      severity: complaintData.severity || 'medium',
+      status: complaintData.status || 'new',
+      pnr: complaintData.pnr || null,
+      seat: complaintData.seat || null,
+      phone: complaintData.phone || null,
+      images: Array.isArray(complaintData.images) ? complaintData.images : [],
+      actionLogs: Array.isArray(complaintData.actionLogs) ? complaintData.actionLogs : [],
       createdAt: complaintData.createdAt || new Date().toISOString()
     };
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { data, error } = await supabase.from('complaints').insert([newEntry]).select().single();
+        const { data, error } = await supabase.from('complaints').insert([cleanEntry]).select().single();
         if (!error && data) {
           saveLocalComplaints([data, ...getLocalComplaints()]);
           return data;
+        } else if (error) {
+          console.error('Supabase complaint insert error:', error);
         }
       } catch (err) {
         console.warn('Supabase insert failed, saving locally:', err);
@@ -138,12 +154,12 @@ export const complaintsApi = {
     }
 
     try {
-      return await api.post('/complaints', complaintData);
+      return await api.post('/complaints', cleanEntry);
     } catch {
       const list = getLocalComplaints();
-      const updatedList = [newEntry, ...list];
+      const updatedList = [cleanEntry, ...list];
       saveLocalComplaints(updatedList);
-      return newEntry;
+      return cleanEntry;
     }
   },
 

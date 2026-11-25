@@ -57,7 +57,7 @@ export function App() {
               <Route
                 path="/vendor"
                 element={
-                  <ProtectedRoute allowedRoles={['vendor', 'admin']}>
+                  <ProtectedRoute allowedRoles={['vendor', 'admin', 'inspector']}>
                     <VendorPortalPage />
                   </ProtectedRoute>
                 }

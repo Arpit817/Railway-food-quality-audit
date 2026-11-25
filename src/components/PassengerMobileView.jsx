@@ -189,19 +189,36 @@ export function PassengerMobileView({ initialToken = '', onBackToDashboard }) {
     }
     setFieldErrors({});
     const refNo = generateReferenceNumber();
-    const fullComment = category === 'foreign_object' ? `${comment} [Contaminant: ${foreignObjectDetail}]` : comment;
+    const fullComment = [
+      category === 'foreign_object' ? `${comment} [Contaminant: ${foreignObjectDetail}]` : comment,
+      batch?.trainNumber ? `[Train: ${batch.trainNumber}]` : ''
+    ].filter(Boolean).join(' ');
+
     const newComplaint = {
       referenceNo: refNo,
       token: qrRecord?.token || tokenInput,
       batchId: batch?.id || 'bat-901',
       vendorId: vendor?.id || 'ven-001',
       kitchenId: kitchen?.id || 'kit-101',
-      trainNumber: batch?.trainNumber,
-      rating, category, comment: fullComment, severity: derivedSeverity, status: 'new',
-      pnr: pnr.trim() || undefined, seat: seatValue,
+      rating,
+      category,
+      comment: fullComment,
+      severity: derivedSeverity,
+      status: 'new',
+      pnr: pnr.trim() || undefined,
+      seat: seatValue,
       phone: isAnonymous ? undefined : phone.trim(),
-      images, createdAt: new Date().toISOString(),
-      actionLogs: [{ id: `log-${Date.now()}`, action: 'CREATED', remarks: `Grievance registered via authorized QR scan (${images.length} photos attached)`, timestamp: new Date().toISOString(), userId: isAnonymous ? 'anonymous-passenger' : `passenger-${pnr || 'public'}` }]
+      images,
+      createdAt: new Date().toISOString(),
+      actionLogs: [
+        {
+          id: `log-${Date.now()}`,
+          action: 'CREATED',
+          remarks: `Grievance registered via authorized QR scan (${images.length} photos attached)`,
+          timestamp: new Date().toISOString(),
+          userId: isAnonymous ? 'anonymous-passenger' : `passenger-${pnr || 'public'}`
+        }
+      ]
     };
     try {
       await createComplaintMutation.mutateAsync(newComplaint);
