@@ -81,7 +81,7 @@ export function FilterBar({
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by PNR, token, reference or remarks (debounced 350ms)..."
+            placeholder="Search by Reference No, PNR, QR Token, or grievance details..."
             aria-label="Search complaints"
             className="w-full pl-9 pr-8 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-railway-500 focus:border-transparent transition-all placeholder:text-slate-400"
           />

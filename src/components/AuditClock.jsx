@@ -23,11 +23,11 @@ export function AuditClock() {
   return (
     <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-      <span className="text-slate-600 font-medium">Audit Clock:</span>
+      <span className="text-slate-600 font-medium">Standard Time:</span>
       <time className="font-mono font-bold text-slate-800" dateTime={time.toISOString()}>
         {time.toLocaleTimeString()}
       </time>
-      <span className="text-[10px] text-slate-400 border-l border-slate-200 pl-2">Live 20s Polling</span>
+      <span className="text-[10px] text-slate-400 border-l border-slate-200 pl-2">IST</span>
     </div>
   );
 }

@@ -226,19 +226,6 @@ export function DashboardLayout() {
               <span>🛡️</span>
               <span className="hidden sm:inline">Food Safety & Inspection Workspace</span>
             </span>
-            <button
-              type="button"
-              onClick={() => setCloudModalOpen(true)}
-              className={`px-2.5 py-1 text-xs rounded font-medium border flex items-center gap-1.5 transition-colors cursor-pointer ${
-                isCloudConnected
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                  : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-              }`}
-              title="Click to view Central Audit Network synchronization status"
-            >
-              <span className={`w-2 h-2 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-              <span className="font-semibold">{isCloudConnected ? 'Central Ledger: Live Sync' : 'Ledger: Standalone Mode'}</span>
-            </button>
           </div>
           <AuditClock />
         </header>

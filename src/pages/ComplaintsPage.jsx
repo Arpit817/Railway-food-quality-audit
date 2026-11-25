@@ -7,11 +7,9 @@ import {
   useUpdateComplaintStatusMutation,
   queryKeys
 } from '../api/index.js';
-import { complaintsApi } from '../api/complaintsApi.js';
 import { FilterBar } from '../components/FilterBar.jsx';
 import { ComplaintCard } from '../components/ComplaintCard.jsx';
 import { ComplaintDetailPanel } from '../components/ComplaintDetailPanel.jsx';
-import { RenderCounter } from '../components/RenderCounter.jsx';
 import { useUIStore } from '../store/uiStore.js';
 
 const PAGE_SIZE = 6;
@@ -42,27 +40,6 @@ export function ComplaintsPage() {
   const { data: complaints = [], isLoading } = useComplaintsQuery();
   const { vendors, kitchens, batches } = useMetadataQuery();
   const updateStatusMutation = useUpdateComplaintStatusMutation();
-
-  const handleClearLedger = async () => {
-    await complaintsApi.clearAll();
-    queryClient.invalidateQueries({ queryKey: queryKeys.complaints.all });
-    setSelectedComplaintId(null);
-    useUIStore.getState().showToast({
-      type: 'info',
-      title: 'Ledger Cleared',
-      message: 'All past complaint records cleared. Starting with a 100% clean slate.'
-    });
-  };
-
-  const handleLoadDemo = async () => {
-    await complaintsApi.resetDemoData();
-    queryClient.invalidateQueries({ queryKey: queryKeys.complaints.all });
-    useUIStore.getState().showToast({
-      type: 'success',
-      title: 'Sample Records Loaded',
-      message: 'Initial mock complaint records loaded for testing.'
-    });
-  };
 
   const filters = useMemo(() => ({
     search: searchParam,
@@ -141,33 +118,25 @@ export function ComplaintsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Complaints Ledger</h2>
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Food Safety Grievances & Enforcement Ledger</h2>
           <p className="text-xs text-slate-500">
             Real-time passenger audit submissions and statutory enforcement ledger.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {complaints.length > 0 && (
-            <button
-              type="button"
-              onClick={handleClearLedger}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-red-200 bg-white hover:bg-red-50 text-red-700 transition-colors flex items-center gap-1 cursor-pointer"
-              title="Clear all past records to start with 0 complaints"
-            >
-              <span>🗑️</span>
-              <span>Clear Ledger (0 Records)</span>
-            </button>
-          )}
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+            Total Cases: {complaints.length}
+          </span>
           <button
             type="button"
-            onClick={handleLoadDemo}
-            className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
-            title="Load sample test records"
+            onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.complaints.all })}
+            className="text-xs font-semibold px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title="Refresh Ledger"
           >
             <span>🔄</span>
-            <span>Load Sample Data</span>
+            <span>Refresh</span>
           </button>
         </div>
       </div>
